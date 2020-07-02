@@ -79,7 +79,7 @@ C****************************************************************************
 !************************************************************************
         endsim = 0
 
-        OPEN (2,FILE='PLANT.INP',STATUS='UNKNOWN')
+        OPEN (2,FILE='Plant.inp',STATUS='UNKNOWN')
         OPEN (1,FILE='plant.out',STATUS='REPLACE')
         
         READ(2,10) Lfmax, EMP2,EMP1,PD,nb,rm,fc,tb,intot,n,lai,w,wr,wc

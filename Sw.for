@@ -79,8 +79,8 @@
 !************************************************************************
       IF (INDEX(DYN,'INITIAL') .NE. 0) THEN
 !************************************************************************
-        OPEN(3,FILE='SOIL.INP',STATUS='UNKNOWN')
-        OPEN(10,FILE='sw.out',  STATUS='REPLACE')
+        OPEN(3,FILE='Soil.inp',STATUS='UNKNOWN')
+        OPEN(10,FILE='soil.out',  STATUS='REPLACE')
         OPEN(11,FILE='IRRIG.INP',STATUS='UNKNOWN')
         
         READ(3,10) WPp,FCp,STp,DP,DRNp,CN,SWC

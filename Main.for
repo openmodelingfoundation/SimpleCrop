@@ -33,7 +33,6 @@ C*************************************************************************
       PROGRAM MAIN
 
 !-----------------------------------------------------------------------
-      USE DFLIB
       IMPLICIT NONE
 
       REAL LAI, SWFAC1, SWFAC2
@@ -148,7 +147,8 @@ C*************************************************************************
      &    LAI,                                            !Output
      &    'CLOSE     ') 
 
-      PAUSE 'End of Program - hit enter key to end'
+      write(*,*) 'End of Program - hit enter key to end'
+      read(*,*)
 
 !-----------------------------------------------------------------------  
       STOP
@@ -170,7 +170,7 @@ C*************************************************************************
       IMPLICIT NONE
       INTEGER DOYP, FROP
 
-      OPEN (UNIT=8, FILE='SIMCTRL.INP',STATUS='UNKNOWN')
+      OPEN (UNIT=8, FILE='Simctrl.inp',STATUS='UNKNOWN')
       READ(8,5) DOYP, FROP
       IF (FROP .LE. 0) FROP = 1
     5 FORMAT(2I6)
