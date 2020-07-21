@@ -53,93 +53,93 @@
 
 !***********************************************************************
 
-    SUBROUTINE PLANT( &
-    DOY, endsim,TMAX,TMIN, PAR, SWFAC1, SWFAC2,     & !Input
-    LAI,                                             & !Output
-    DYN)                                            !Control
+SUBROUTINE PLANT(&
+        DOY, endsim, TMAX, TMIN, PAR, SWFAC1, SWFAC2, & !Input
+        LAI, & !Output
+        DYN)                                            !Control
 
-!-----------------------------------------------------------------------
+    !-----------------------------------------------------------------------
     IMPLICIT NONE
     SAVE
 
-    REAL :: E,Fc,Lai, nb,N,PT,Pg, di,PAR
-    REAL :: rm,dwf,int, TMAX,TMIN, p1, sla
-    REAL :: PD,EMP1,EMP2,Lfmax,dwc, TMN
-    REAL :: dwr,dw,dn,w,wc,wr,wf,tb,intot, dLAI, FL
+    REAL :: E, Fc, Lai, nb, N, PT, Pg, di, PAR
+    REAL :: rm, dwf, int, TMAX, TMIN, p1, sla
+    REAL :: PD, EMP1, EMP2, Lfmax, dwc, TMN
+    REAL :: dwr, dw, dn, w, wc, wr, wf, tb, intot, dLAI, FL
     INTEGER :: DOY, endsim, COUNT
     CHARACTER(10) :: DYN
 
     REAL :: SWFAC1, SWFAC2
 
-!************************************************************************
-!************************************************************************
-!     INITIALIZATION
-!************************************************************************
-    IF (INDEX(DYN,'INITIAL') /= 0) THEN
     !************************************************************************
+    !************************************************************************
+    !     INITIALIZATION
+    !************************************************************************
+    IF (INDEX(DYN, 'INITIAL') /= 0) THEN
+        !************************************************************************
         endsim = 0
 
-        OPEN (2,FILE='Plant.inp',STATUS='UNKNOWN')
-        OPEN (1,FILE='plant.out',STATUS='REPLACE')
-                
-        READ(2,10) Lfmax, EMP2,EMP1,PD,nb,rm,fc,tb,intot,n,lai,w,wr,wc &
-        ,p1,sla
-        10 FORMAT(17(1X,F7.4))
+        OPEN (2, FILE = 'data/plant.inp', STATUS = 'UNKNOWN')
+        OPEN (1, FILE = 'output/plant.out', STATUS = 'REPLACE')
+
+        READ(2, 10) Lfmax, EMP2, EMP1, PD, nb, rm, fc, tb, intot, n, lai, w, wr, wc &
+                , p1, sla
+        10 FORMAT(17(1X, F7.4))
         CLOSE(2)
 
-        WRITE(1,11)
-        WRITE(1,12)
+        WRITE(1, 11)
+        WRITE(1, 12)
         11 FORMAT('Results of plant growth simulation: ')
         12 FORMAT(/ &
-        /,'                Accum', &
-        /,'       Number    Temp                                    Leaf', &
-        /,'  Day      of  during   Plant  Canopy    Root   Fruit    Area', &
-        /,'   of    Leaf  Reprod  Weight  Weight  Weight  weight   Index', &
-        /,' Year   Nodes    (oC)  (g/m2)  (g/m2)  (g/m2)  (g/m2) (m2/m2)', &
-        /,' ----  ------  ------  ------  ------  ------  ------  ------')
+                /, '                Accum', &
+                /, '       Number    Temp                                    Leaf', &
+                /, '  Day      of  during   Plant  Canopy    Root   Fruit    Area', &
+                /, '   of    Leaf  Reprod  Weight  Weight  Weight  weight   Index', &
+                /, ' Year   Nodes    (oC)  (g/m2)  (g/m2)  (g/m2)  (g/m2) (m2/m2)', &
+                /, ' ----  ------  ------  ------  ------  ------  ------  ------')
 
-        WRITE(*,11)
-        WRITE(*,12)
+        WRITE(*, 11)
+        WRITE(*, 12)
 
         COUNT = 0
 
-    !************************************************************************
-    !************************************************************************
-    !     RATE CALCULATIONS
-    !************************************************************************
-    ELSEIF (INDEX(DYN,'RATE') /= 0) THEN
-    !************************************************************************
+        !************************************************************************
+        !************************************************************************
+        !     RATE CALCULATIONS
+        !************************************************************************
+    ELSEIF (INDEX(DYN, 'RATE') /= 0) THEN
+        !************************************************************************
         TMN = 0.5 * (TMAX + TMIN)
-        CALL PTS(TMAX,TMIN,PT)
-        CALL PGS(SWFAC1, SWFAC2,PAR, PD, PT, Lai, Pg)
+        CALL PTS(TMAX, TMIN, PT)
+        CALL PGS(SWFAC1, SWFAC2, PAR, PD, PT, Lai, Pg)
 
         IF (N < Lfmax) THEN
-        !         Vegetative phase
+            !         Vegetative phase
             FL = 1.0
-            E  = 1.0
+            E = 1.0
             dN = rm * PT
 
-            CALL LAIS(FL,di,PD,EMP1,EMP2,N,nb,SWFAC1,SWFAC2,PT, &
-            dN,p1, sla, dLAI)
+            CALL LAIS(FL, di, PD, EMP1, EMP2, N, nb, SWFAC1, SWFAC2, PT, &
+                    dN, p1, sla, dLAI)
             dw = E * (Pg) * PD
             dwc = Fc * dw
-            dwr = (1-Fc) * dw
+            dwr = (1 - Fc) * dw
             dwf = 0.0
 
         ELSE
-        !         Reproductive phase
+            !         Reproductive phase
             FL = 2.0
-                      
+
             IF (TMN >= tb .AND. TMN <= 25) THEN
-                di = (TMN-tb)
+                di = (TMN - tb)
             ELSE
                 di = 0.0
             ENDIF
 
             int = int + di
             E = 1.0
-            CALL LAIS(FL,di,PD,EMP1,EMP2,N,nb,SWFAC1,SWFAC2,PT, &
-            dN,p1, sla, dLAI)
+            CALL LAIS(FL, di, PD, EMP1, EMP2, N, nb, SWFAC1, SWFAC2, PT, &
+                    dN, p1, sla, dLAI)
             dw = E * (Pg) * PD
             dwf = dw
             dwc = 0.0
@@ -147,67 +147,67 @@
             dn = 0.0
         ENDIF
 
-    !************************************************************************
-    !************************************************************************
-    !     INTEGRATION
-    !************************************************************************
-    ELSEIF (INDEX(DYN,'INTEG') /= 0) THEN
-    !************************************************************************
+        !************************************************************************
+        !************************************************************************
+        !     INTEGRATION
+        !************************************************************************
+    ELSEIF (INDEX(DYN, 'INTEG') /= 0) THEN
+        !************************************************************************
         LAI = LAI + dLAI
-        w  = w  + dw
+        w = w + dw
         wc = wc + dwc
         wr = wr + dwr
         wf = wf + dwf
 
-        LAI = MAX(LAI,0.0)
-        W   = MAX(W, 0.0)
-        WC  = MAX(WC,0.0)
-        WR  = MAX(WR,0.0)
-        WF  = MAX(WF,0.0)
+        LAI = MAX(LAI, 0.0)
+        W = MAX(W, 0.0)
+        WC = MAX(WC, 0.0)
+        WR = MAX(WR, 0.0)
+        WF = MAX(WF, 0.0)
 
-        N   = N   + dN
+        N = N + dN
         IF (int > INTOT) THEN
             endsim = 1
-            WRITE(1,14) doy
-            14 FORMAT(/,'  The crop matured on day ',I3,'.')
+            WRITE(1, 14) doy
+            14 FORMAT(/, '  The crop matured on day ', I3, '.')
             RETURN
         ENDIF
 
-    !************************************************************************
-    !************************************************************************
-    !     OUTPUT
-    !************************************************************************
-    ELSEIF (INDEX(DYN,'OUTPUT') /= 0) THEN
-    !************************************************************************
-        WRITE(1,20) DOY,n,int,w,wc,wr,wf,lai
-        20 FORMAT(I5,7F8.2)
+        !************************************************************************
+        !************************************************************************
+        !     OUTPUT
+        !************************************************************************
+    ELSEIF (INDEX(DYN, 'OUTPUT') /= 0) THEN
+        !************************************************************************
+        WRITE(1, 20) DOY, n, int, w, wc, wr, wf, lai
+        20 FORMAT(I5, 7F8.2)
 
         IF (COUNT == 23) THEN
             COUNT = 0
-            WRITE(*,30)
+            WRITE(*, 30)
             30 FORMAT(2/)
-            WRITE(*,12)
+            WRITE(*, 12)
         ENDIF
 
         COUNT = COUNT + 1
-        WRITE(*,20) DOY,n,int,w,wc,wr,wf,lai
+        WRITE(*, 20) DOY, n, int, w, wc, wr, wf, lai
 
-    !************************************************************************
-    !************************************************************************
-    !     CLOSE
-    !************************************************************************
-    ELSEIF (INDEX(DYN,'CLOSE') /= 0) THEN
-    !************************************************************************
+        !************************************************************************
+        !************************************************************************
+        !     CLOSE
+        !************************************************************************
+    ELSEIF (INDEX(DYN, 'CLOSE') /= 0) THEN
+        !************************************************************************
         CLOSE(1)
 
-    !************************************************************************
-    !************************************************************************
-    !     End of dynamic 'IF' construct
-    !************************************************************************
+        !************************************************************************
+        !************************************************************************
+        !     End of dynamic 'IF' construct
+        !************************************************************************
     ENDIF
-!************************************************************************
+    !************************************************************************
     RETURN
-    END SUBROUTINE PLANT
+END SUBROUTINE PLANT
 !***********************************************************************
 
 
@@ -219,28 +219,28 @@
 !     Input:  FL, di, PD, EMP1, EMP2, N, nb, SWFAC1, SWFAC2, PT, dN
 !     Output: dLAI
 !************************************************************************
-    SUBROUTINE LAIS(FL,di,PD,EMP1,EMP2,N,nb,SWFAC1,SWFAC2,PT, &
-    dN,p1, sla, dLAI)
+SUBROUTINE LAIS(FL, di, PD, EMP1, EMP2, N, nb, SWFAC1, SWFAC2, PT, &
+        dN, p1, sla, dLAI)
 
-!-----------------------------------------------------------------------
+    !-----------------------------------------------------------------------
     IMPLICIT NONE
     SAVE
-    REAL :: PD,EMP1,EMP2,N,nb,dLAI, SWFAC,a, dN, p1,sla
+    REAL :: PD, EMP1, EMP2, N, nb, dLAI, SWFAC, a, dN, p1, sla
     REAL :: SWFAC1, SWFAC2, PT, di, FL
-!-----------------------------------------------------------------------
+    !-----------------------------------------------------------------------
 
     SWFAC = MIN(SWFAC1, SWFAC2)
     IF (FL == 1.0) THEN
-        a = exp(EMP2 * (N-nb))
-        dLAI = SWFAC * PD * EMP1 * PT * (a/(1+a)) * dN
+        a = exp(EMP2 * (N - nb))
+        dLAI = SWFAC * PD * EMP1 * PT * (a / (1 + a)) * dN
     ELSEIF (FL == 2.0) THEN
 
         dLAI = - PD * di * p1 * sla
 
     ENDIF
-!-----------------------------------------------------------------------
+    !-----------------------------------------------------------------------
     RETURN
-    END SUBROUTINE LAIS
+END SUBROUTINE LAIS
 !***********************************************************************
 
 
@@ -249,26 +249,26 @@
 !     Subroutine PGS
 !     Calculates the canopy gross photosysntesis rate (PG)
 !*****************************************************************************
-    SUBROUTINE PGS(SWFAC1, SWFAC2,PAR, PD, PT, Lai, Pg)
+SUBROUTINE PGS(SWFAC1, SWFAC2, PAR, PD, PT, Lai, Pg)
 
-!-----------------------------------------------------------------------
+    !-----------------------------------------------------------------------
     IMPLICIT NONE
     SAVE
     REAL :: PAR, Lai, Pg, PT, Y1
-    REAL :: SWFAC1, SWFAC2, SWFAC,ROWSPC,PD
+    REAL :: SWFAC1, SWFAC2, SWFAC, ROWSPC, PD
 
-!-----------------------------------------------------------------------
-!     ROWSP = row spacing
-!     Y1 = canopy light extinction coefficient
+    !-----------------------------------------------------------------------
+    !     ROWSP = row spacing
+    !     Y1 = canopy light extinction coefficient
 
     SWFAC = MIN(SWFAC1, SWFAC2)
     ROWSPC = 60.0
-    Y1    = 1.5 - 0.768 * ((ROWSPC * 0.01)**2 * PD)**0.1
-    Pg = PT * SWFAC * 2.1 * PAR/PD * (1.0 - EXP(-Y1 * LAI))
+    Y1 = 1.5 - 0.768 * ((ROWSPC * 0.01)**2 * PD)**0.1
+    Pg = PT * SWFAC * 2.1 * PAR / PD * (1.0 - EXP(-Y1 * LAI))
 
-!-----------------------------------------------------------------------
+    !-----------------------------------------------------------------------
     RETURN
-    END SUBROUTINE PGS
+END SUBROUTINE PGS
 !***********************************************************************
 
 
@@ -278,18 +278,18 @@
 !     Calculates the factor that incorporates the effect of temperature
 !     on photosynthesis
 !************************************************************************
-    SUBROUTINE PTS(TMAX,TMIN,PT)
-!-----------------------------------------------------------------------
+SUBROUTINE PTS(TMAX, TMIN, PT)
+    !-----------------------------------------------------------------------
     IMPLICIT NONE
     SAVE
-    REAL :: PT,TMAX,TMIN
+    REAL :: PT, TMAX, TMIN
 
-!-----------------------------------------------------------------------
-    PT = 1.0 - 0.0025*((0.25*TMIN+0.75*TMAX)-26.0)**2
+    !-----------------------------------------------------------------------
+    PT = 1.0 - 0.0025 * ((0.25 * TMIN + 0.75 * TMAX) - 26.0)**2
 
-!-----------------------------------------------------------------------
+    !-----------------------------------------------------------------------
     RETURN
-    END SUBROUTINE PTS
+END SUBROUTINE PTS
 !***********************************************************************
 !***********************************************************************
 

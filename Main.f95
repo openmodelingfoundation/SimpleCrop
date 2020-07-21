@@ -30,129 +30,129 @@
 
 !**********************************************************************
 
-    PROGRAM MAIN
+PROGRAM MAIN
 
-!-----------------------------------------------------------------------
+    !-----------------------------------------------------------------------
     IMPLICIT NONE
 
     REAL :: LAI, SWFAC1, SWFAC2
     REAL :: SRAD, TMAX, TMIN, PAR, RAIN
-    INTEGER :: DOY,DOYP, endsim
+    INTEGER :: DOY, DOYP, endsim
     INTEGER :: FROP, IPRINT
 
-!************************************************************************
-!************************************************************************
-!     INITIALIZATION AND INPUT OF DATA
-!************************************************************************
+    !************************************************************************
+    !************************************************************************
+    !     INITIALIZATION AND INPUT OF DATA
+    !************************************************************************
     CALL OPENF(DOYP, FROP)
 
-    CALL WEATHR(SRAD,TMAX,TMIN,RAIN,PAR,'INITIAL   ')
+    CALL WEATHR(SRAD, TMAX, TMIN, RAIN, PAR, 'INITIAL   ')
 
-    CALL SW( &
-    DOY, LAI, RAIN, SRAD, TMAX, TMIN,                & !Input
-    SWFAC1, SWFAC2,                                  & !Output
-    'INITIAL   ')                                   !Control
+    CALL SW(&
+            DOY, LAI, RAIN, SRAD, TMAX, TMIN, & !Input
+            SWFAC1, SWFAC2, & !Output
+            'INITIAL   ')                                   !Control
 
-    CALL PLANT(DOY, endsim, TMAX, TMIN,                  & !Input
-    PAR, SWFAC1, SWFAC2,                             & !Input
-    LAI,                                             & !Output
-    'INITIAL   ')                                   !Control
+    CALL PLANT(DOY, endsim, TMAX, TMIN, & !Input
+            PAR, SWFAC1, SWFAC2, & !Input
+            LAI, & !Output
+            'INITIAL   ')                                   !Control
 
-!-----------------------------------------------------------------------
-!     DAILY TIME LOOP
-!-----------------------------------------------------------------------
-    DO 500 DOY = 0,1000
+    !-----------------------------------------------------------------------
+    !     DAILY TIME LOOP
+    !-----------------------------------------------------------------------
+    DO 500 DOY = 0, 1000
         IF (DOY /= 0) THEN
 
-            CALL WEATHR(SRAD,TMAX,TMIN,RAIN,PAR,'RATE      ')
+            CALL WEATHR(SRAD, TMAX, TMIN, RAIN, PAR, 'RATE      ')
 
 
-        !************************************************************************
-        !************************************************************************
-        !     RATE CALCULATIONS
-        !************************************************************************
-            CALL SW( &
-            DOY, LAI, RAIN, SRAD, TMAX, TMIN,              & !Input
-            SWFAC1, SWFAC2,                                & !Output
-            'RATE      ')                                 !Control
+            !************************************************************************
+            !************************************************************************
+            !     RATE CALCULATIONS
+            !************************************************************************
+            CALL SW(&
+                    DOY, LAI, RAIN, SRAD, TMAX, TMIN, & !Input
+                    SWFAC1, SWFAC2, & !Output
+                    'RATE      ')                                 !Control
 
             IF (DOY > DOYP) THEN
-                CALL PLANT(DOY, endsim,TMAX,TMIN,              & !Input
-                PAR, SWFAC1, SWFAC2,                         & !Input
-                LAI,                                         & !Output
-                'RATE      ')                               !Control
+                CALL PLANT(DOY, endsim, TMAX, TMIN, & !Input
+                        PAR, SWFAC1, SWFAC2, & !Input
+                        LAI, & !Output
+                        'RATE      ')                               !Control
             ENDIF
 
-        !************************************************************************
-        !************************************************************************
-        !     INTEGRATION OF STATE VARIABLES
-        !************************************************************************
-            CALL SW( &
-            DOY, LAI, RAIN, SRAD, TMAX, TMIN,              & !Input
-            SWFAC1, SWFAC2,                                & !Output
-            'INTEG     ')                                 !Control
+            !************************************************************************
+            !************************************************************************
+            !     INTEGRATION OF STATE VARIABLES
+            !************************************************************************
+            CALL SW(&
+                    DOY, LAI, RAIN, SRAD, TMAX, TMIN, & !Input
+                    SWFAC1, SWFAC2, & !Output
+                    'INTEG     ')                                 !Control
 
             IF (DOY > DOYP) THEN
-                CALL PLANT(DOY, endsim, TMAX,TMIN,             & !Input
-                PAR, SWFAC1, SWFAC2,                         & !Input
-                LAI,                                         & !Output
-                'INTEG     ')                               !Control
+                CALL PLANT(DOY, endsim, TMAX, TMIN, & !Input
+                        PAR, SWFAC1, SWFAC2, & !Input
+                        LAI, & !Output
+                        'INTEG     ')                               !Control
             ENDIF
 
         ENDIF
 
-    !************************************************************************
-    !************************************************************************
-    !     WRITE DAILY OUTPUT
-    !************************************************************************
+        !************************************************************************
+        !************************************************************************
+        !     WRITE DAILY OUTPUT
+        !************************************************************************
 
         IPRINT = MOD(DOY, FROP)
         IF ((IPRINT == 0) .OR. (endsim == 1) .OR. &
-        (DOY == DOYP)) THEN
+                (DOY == DOYP)) THEN
 
-            CALL SW( &
-            DOY, LAI, RAIN, SRAD, TMAX, TMIN,              & !Input
-            SWFAC1, SWFAC2,                                & !Output
-            'OUTPUT    ')                                 !Control
+            CALL SW(&
+                    DOY, LAI, RAIN, SRAD, TMAX, TMIN, & !Input
+                    SWFAC1, SWFAC2, & !Output
+                    'OUTPUT    ')                                 !Control
 
             IF (DOY >= DOYP) THEN
-                CALL PLANT(DOY, endsim, TMAX,TMIN,             & !Input
-                PAR, SWFAC1, SWFAC2,                         & !Input
-                LAI,                                         & !Output
-                'OUTPUT    ')                               !Control
+                CALL PLANT(DOY, endsim, TMAX, TMIN, & !Input
+                        PAR, SWFAC1, SWFAC2, & !Input
+                        LAI, & !Output
+                        'OUTPUT    ')                               !Control
             ENDIF
 
         ENDIF
 
         IF (ENDSIM == 1) EXIT
 
+        !-----------------------------------------------------------------------
+        !     END OF DAILY TIME LOOP
+        !-----------------------------------------------------------------------
+    500 END DO
+
+    !************************************************************************
+    !************************************************************************
+    !     CLOSE FILES AND WRITE SUMMARY REPORTS
+    !************************************************************************
+    CALL WEATHR(SRAD, TMAX, TMIN, RAIN, PAR, 'CLOSE     ')
+
+    CALL SW(&
+            DOY, LAI, RAIN, SRAD, TMAX, TMIN, & !Input
+            SWFAC1, SWFAC2, & !Output
+            'CLOSE     ')                                     !Control
+
+    CALL PLANT(DOY, endsim, TMAX, TMIN, & !Input
+            PAR, SWFAC1, SWFAC2, & !Input
+            LAI, & !Output
+            'CLOSE     ')
+
+    write(*, *) 'End of Program - hit enter key to end'
+    read(*, *)
+
     !-----------------------------------------------------------------------
-    !     END OF DAILY TIME LOOP
-    !-----------------------------------------------------------------------
-500 END DO
-
-!************************************************************************
-!************************************************************************
-!     CLOSE FILES AND WRITE SUMMARY REPORTS
-!************************************************************************
-    CALL WEATHR(SRAD,TMAX,TMIN,RAIN,PAR,'CLOSE     ')
-
-    CALL SW( &
-    DOY, LAI, RAIN, SRAD, TMAX, TMIN,                  & !Input
-    SWFAC1, SWFAC2,                                    & !Output
-    'CLOSE     ')                                     !Control
-
-    CALL PLANT(DOY, endsim, TMAX,TMIN,                   & !Input
-    PAR, SWFAC1, SWFAC2,                             & !Input
-    LAI,                                             & !Output
-    'CLOSE     ')
-
-    write(*,*) 'End of Program - hit enter key to end'
-    read(*,*)
-
-!-----------------------------------------------------------------------
     STOP
-    END PROGRAM MAIN
+END PROGRAM MAIN
 !***************************************************************************
 
 
@@ -165,19 +165,19 @@
 !     SIMCTRL.INP => date of planting, frequency of printout
 !***********************************************************************
 
-    SUBROUTINE OPENF(DOYP, FROP)
+SUBROUTINE OPENF(DOYP, FROP)
 
     IMPLICIT NONE
     INTEGER :: DOYP, FROP
 
-    OPEN (UNIT=8, FILE='Simctrl.inp',STATUS='UNKNOWN')
-    READ(8,5) DOYP, FROP
+    OPEN (UNIT = 8, FILE = 'data/simctrl.inp', STATUS = 'UNKNOWN')
+    READ(8, 5) DOYP, FROP
     IF (FROP <= 0) FROP = 1
     5 FORMAT(2I6)
     CLOSE(8)
 
-!-----------------------------------------------------------------------
+    !-----------------------------------------------------------------------
     RETURN
-    END SUBROUTINE OPENF
+END SUBROUTINE OPENF
 !***********************************************************************
 !***********************************************************************

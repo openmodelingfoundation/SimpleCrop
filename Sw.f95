@@ -1,15 +1,15 @@
 subroutine swrate(x)
-  IMPLICIT NONE
-  real x
+    IMPLICIT NONE
+    real x
 
-  x = x * 2
+    x = x * 2
 end subroutine swrate
 
 subroutine swinteg(x)
-  implicit none
-  real x
+    implicit none
+    real x
 
-  x = x * 2
+    x = x * 2
 end subroutine swinteg
 
 !************************************************************************
@@ -68,114 +68,114 @@ end subroutine swinteg
 ! *     WPp     = water content at wilting point (fraction of void space)
 
 !************************************************************************
-      SUBROUTINE SW( &
+SUBROUTINE SW(&
         DOY, LAI, RAIN, SRAD, TMAX, TMIN, &             !Input
         SWFAC1, SWFAC2, &                               !Output
         DYN)                                            !Control
 
-!-----------------------------------------------------------------------
-      IMPLICIT NONE
-      SAVE
+    !-----------------------------------------------------------------------
+    IMPLICIT NONE
+    SAVE
 
-      INTEGER   DATE, DOY
-      REAL      SRAD,TMAX,TMIN,RAIN,SWC,INF,IRR,ROF,ESa,EPa,DRNp
-      REAL      DRN,DP,WPp,FCp,STp,WP,FC,ST,ESp,EPp,ETp,LAI
-      CHARACTER*10 DYN
+    INTEGER   DATE, DOY
+    REAL      SRAD, TMAX, TMIN, RAIN, SWC, INF, IRR, ROF, ESa, EPa, DRNp
+    REAL      DRN, DP, WPp, FCp, STp, WP, FC, ST, ESp, EPp, ETp, LAI
+    CHARACTER*10 DYN
 
-      REAL CN, SWFAC1, SWFAC2, POTINF
-      REAL SWC_INIT, TRAIN, TIRR, TESA, TEPA, TROF, TDRN
-      REAL TINF, SWC_ADJ
+    REAL CN, SWFAC1, SWFAC2, POTINF
+    REAL SWC_INIT, TRAIN, TIRR, TESA, TEPA, TROF, TDRN
+    REAL TINF, SWC_ADJ
 
-!************************************************************************
-!************************************************************************
-!     INITIALIZATION
-!************************************************************************
-      IF (INDEX(DYN,'INITIAL') .NE. 0) THEN
-!************************************************************************
-        OPEN(3,FILE='Soil.inp',STATUS='UNKNOWN')
-        OPEN(10,FILE='soil.out',  STATUS='REPLACE')
-        OPEN(11,FILE='IRRIG.INP',STATUS='UNKNOWN')
+    !************************************************************************
+    !************************************************************************
+    !     INITIALIZATION
+    !************************************************************************
+    IF (INDEX(DYN, 'INITIAL') .NE. 0) THEN
+        !************************************************************************
+        OPEN(3, FILE = 'data/soil.inp', STATUS = 'UNKNOWN')
+        OPEN(10, FILE = 'output/soil.out', STATUS = 'REPLACE')
+        OPEN(11, FILE = 'data/irrig.inp', STATUS = 'UNKNOWN')
 
-        READ(3,'(5X,F5.2,5X,F5.2,5X,F5.2,5X,F7.2,5X,F5.2,5X,F5.2,5X,F5.2)') WPp,FCp,STp,DP,DRNp,CN,SWC
+        READ(3, '(5X,F5.2,5X,F5.2,5X,F5.2,5X,F7.2,5X,F5.2,5X,F5.2,5X,F5.2)') WPp, FCp, STp, DP, DRNp, CN, SWC
         CLOSE(3)
 
-        WRITE(10,15)
-    15  FORMAT('Results of soil water balance simulation:', &
-          /,105X,'Soil',/,73X,'Pot.  Actual  Actual    Soil   Water', &
-          10X,'Excess',/,'  Day   Solar     Max     Min',42X, &
-          'Evapo-    Soil   Plant   Water Content Drought   Water', &
-          /,'   of    Rad.    Temp    Temp    Rain   Irrig  Runoff', &
-          '   Infil   Drain   Trans   Evap.  Trans. content   (mm3/', &
-          '  Stress  Stress',/,' Year (MJ/m2)    (oC)    (oC)    (mm)', &
-          '    (mm)    (mm)    (mm)    (mm)    (mm)    (mm)    (mm)', &
-          '    (mm)    mm3)  Factor  Factor')
+        WRITE(10, 15)
+        15  FORMAT('Results of soil water balance simulation:', &
+                /, 105X, 'Soil', /, 73X, 'Pot.  Actual  Actual    Soil   Water', &
+                10X, 'Excess', /, '  Day   Solar     Max     Min', 42X, &
+                'Evapo-    Soil   Plant   Water Content Drought   Water', &
+                /, '   of    Rad.    Temp    Temp    Rain   Irrig  Runoff', &
+                '   Infil   Drain   Trans   Evap.  Trans. content   (mm3/', &
+                '  Stress  Stress', /, ' Year (MJ/m2)    (oC)    (oC)    (mm)', &
+                '    (mm)    (mm)    (mm)    (mm)    (mm)    (mm)    (mm)', &
+                '    (mm)    mm3)  Factor  Factor')
 
-        WP  = DP * WPp * 10.0
-        FC  = DP * FCp * 10.0
-        ST  = DP * STp * 10.0
+        WP = DP * WPp * 10.0
+        FC = DP * FCp * 10.0
+        ST = DP * STp * 10.0
         SWC_INIT = SWC
 
         CALL RUNOFF(POTINF, CN, ROF, 'INITIAL   ')
         CALL STRESS(SWC, DP, FC, ST, WP, SWFAC1, SWFAC2, 'INITIAL   ')
 
-!     Keep totals for water balance
+        !     Keep totals for water balance
         TRAIN = 0.0
-        TIRR  = 0.0
-        TESA  = 0.0
-        TEPA  = 0.0
-        TROF  = 0.0
-        TDRN  = 0.0
-        TINF  = 0.0
+        TIRR = 0.0
+        TESA = 0.0
+        TEPA = 0.0
+        TROF = 0.0
+        TDRN = 0.0
+        TINF = 0.0
         SWC_ADJ = 0.0
 
-!************************************************************************
-!************************************************************************
-!     RATE CALCULATIONS
-!************************************************************************
-      ELSEIF (INDEX(DYN,'RATE') .NE. 0) THEN
-!************************************************************************
-        READ(11,25) DATE, IRR
-   25   FORMAT(I5,2X,F4.1)
+        !************************************************************************
+        !************************************************************************
+        !     RATE CALCULATIONS
+        !************************************************************************
+    ELSEIF (INDEX(DYN, 'RATE') .NE. 0) THEN
+        !************************************************************************
+        READ(11, 25) DATE, IRR
+        25   FORMAT(I5, 2X, F4.1)
 
         TIRR = TIRR + IRR
         POTINF = RAIN + IRR
-        TRAIN  = TRAIN + RAIN
+        TRAIN = TRAIN + RAIN
         CALL DRAINE(SWC, FC, DRNp, DRN)
 
         IF (POTINF .GT. 0.0) THEN
-          CALL RUNOFF(POTINF, CN, ROF, 'RATE      ')
-          INF = POTINF - ROF
+            CALL RUNOFF(POTINF, CN, ROF, 'RATE      ')
+            INF = POTINF - ROF
         ELSE
-          ROF = 0.0
-          INF = 0.0
+            ROF = 0.0
+            INF = 0.0
         ENDIF
 
-!     Potential evapotranspiration (ETp), soil evaporation (ESp) and
-!       plant transpiration (EPp)
-        CALL ETpS(SRAD,TMAX,TMIN,LAI,ETp)
+        !     Potential evapotranspiration (ETp), soil evaporation (ESp) and
+        !       plant transpiration (EPp)
+        CALL ETpS(SRAD, TMAX, TMIN, LAI, ETp)
         ESp = ETp * EXP(-0.7 * LAI)
         EPp = ETp * (1 - EXP(-0.7 * LAI))
 
-!     Actual soil evaporation (ESa), plant transpiration (EPa)
-        CALL ESaS(ESp,SWC,FC,WP,ESa)
+        !     Actual soil evaporation (ESa), plant transpiration (EPa)
+        CALL ESaS(ESp, SWC, FC, WP, ESa)
         EPa = EPp * MIN(SWFAC1, SWFAC2)
 
-!************************************************************************
-!************************************************************************
-!     INTEGRATION
-!************************************************************************
-      ELSEIF (INDEX(DYN,'INTEG') .NE. 0) THEN
-!************************************************************************
+        !************************************************************************
+        !************************************************************************
+        !     INTEGRATION
+        !************************************************************************
+    ELSEIF (INDEX(DYN, 'INTEG') .NE. 0) THEN
+        !************************************************************************
         SWC = SWC + (INF - ESa - EPa - DRN)
 
         IF (SWC .GT. ST) THEN
-          ROF = ROF + (SWC - ST)
-          SWC = ST
+            ROF = ROF + (SWC - ST)
+            SWC = ST
         ENDIF
 
         IF (SWC .LT. 0.0) THEN
-          SWC_ADJ =  SWC_ADJ - SWC
-          SWC = 0.0
+            SWC_ADJ = SWC_ADJ - SWC
+            SWC = 0.0
         ENDIF
 
         TINF = TINF + INF
@@ -186,34 +186,34 @@ end subroutine swinteg
 
         CALL STRESS(SWC, DP, FC, ST, WP, SWFAC1, SWFAC2, 'INTEG     ')
 
-!************************************************************************
-!************************************************************************
-!     OUTPUT
-!************************************************************************
-      ELSEIF (INDEX(DYN,'OUTPUT    ') .NE. 0) THEN
-!************************************************************************
-        WRITE(10,'(I5,3F8.1,9F8.2,3F8.3)') DOY, SRAD, TMAX, TMIN, RAIN, IRR, ROF, INF, DRN, &
-          ETP, ESa, EPa, SWC, SWC/DP, SWFAC1, SWFAC2
+        !************************************************************************
+        !************************************************************************
+        !     OUTPUT
+        !************************************************************************
+    ELSEIF (INDEX(DYN, 'OUTPUT    ') .NE. 0) THEN
+        !************************************************************************
+        WRITE(10, '(I5,3F8.1,9F8.2,3F8.3)') DOY, SRAD, TMAX, TMIN, RAIN, IRR, ROF, INF, DRN, &
+                ETP, ESa, EPa, SWC, SWC / DP, SWFAC1, SWFAC2
 
-!************************************************************************
-!************************************************************************
-!     CLOSE
-!************************************************************************
-      ELSEIF (INDEX(DYN,'CLOSE') .NE. 0) THEN
-!************************************************************************
-      CALL WBAL(SWC_INIT, SWC, TDRN, TEPA, &
+        !************************************************************************
+        !************************************************************************
+        !     CLOSE
+        !************************************************************************
+    ELSEIF (INDEX(DYN, 'CLOSE') .NE. 0) THEN
+        !************************************************************************
+        CALL WBAL(SWC_INIT, SWC, TDRN, TEPA, &
                 TESA, TIRR, TRAIN, TROF, SWC_ADJ, TINF)
-      CLOSE(10)
-      CLOSE(11)
+        CLOSE(10)
+        CLOSE(11)
 
-!************************************************************************
-!************************************************************************
-!     End of dynamic 'IF' construct
-!************************************************************************
-      ENDIF
-!************************************************************************
-      RETURN
-      END SUBROUTINE SW
+        !************************************************************************
+        !************************************************************************
+        !     End of dynamic 'IF' construct
+        !************************************************************************
+    ENDIF
+    !************************************************************************
+    RETURN
+END SUBROUTINE SW
 !************************************************************************
 
 
@@ -226,23 +226,23 @@ end subroutine swinteg
 !     Output: DRN
 !************************************************************************
 
-      SUBROUTINE DRAINE(SWC,FC,DRNp,DRN)
+SUBROUTINE DRAINE(SWC, FC, DRNp, DRN)
 
-!-----------------------------------------------------------------------
-      IMPLICIT NONE
-      SAVE
-      REAL SWC, FC, DRN, DRNp
-!-----------------------------------------------------------------------
+    !-----------------------------------------------------------------------
+    IMPLICIT NONE
+    SAVE
+    REAL SWC, FC, DRN, DRNp
+    !-----------------------------------------------------------------------
 
-      IF (SWC .GT. FC) THEN
-         DRN = (SWC - FC) * DRNp
-      ELSE
-         DRN = 0
-      ENDIF
+    IF (SWC .GT. FC) THEN
+        DRN = (SWC - FC) * DRNp
+    ELSE
+        DRN = 0
+    ENDIF
 
-!-----------------------------------------------------------------------
-      RETURN
-      END SUBROUTINE DRAINE
+    !-----------------------------------------------------------------------
+    RETURN
+END SUBROUTINE DRAINE
 !************************************************************************
 
 
@@ -255,26 +255,26 @@ end subroutine swinteg
 ! *     Output: ESa
 !************************************************************************
 
-      SUBROUTINE ESaS(ESp,SWC,FC,WP,ESa)
+SUBROUTINE ESaS(ESp, SWC, FC, WP, ESa)
 
-!-----------------------------------------------------------------------
-      IMPLICIT NONE
-      SAVE
-      REAL a, SWC, WP, FC, ESa, ESp
-!-----------------------------------------------------------------------
-      IF (SWC .LT. WP) THEN
+    !-----------------------------------------------------------------------
+    IMPLICIT NONE
+    SAVE
+    REAL a, SWC, WP, FC, ESa, ESp
+    !-----------------------------------------------------------------------
+    IF (SWC .LT. WP) THEN
         a = 0
-      ELSEIF (SWC .GT. FC) THEN
+    ELSEIF (SWC .GT. FC) THEN
         a = 1
-      ELSE
-        a = (SWC - WP)/(FC - WP)
-      ENDIF
+    ELSE
+        a = (SWC - WP) / (FC - WP)
+    ENDIF
 
-      ESa = ESp * a
+    ESa = ESp * a
 
-!-----------------------------------------------------------------------
-      RETURN
-      END SUBROUTINE ESAS
+    !-----------------------------------------------------------------------
+    RETURN
+END SUBROUTINE ESAS
 !************************************************************************
 
 
@@ -294,31 +294,31 @@ end subroutine swinteg
 ! *     f    =
 
 !-----------------------------------------------------------------------
-      SUBROUTINE ETpS(SRAD,TMAX,TMIN,LAI,ETp)
+SUBROUTINE ETpS(SRAD, TMAX, TMIN, LAI, ETp)
 
-!-----------------------------------------------------------------------
-      IMPLICIT NONE
-      SAVE
-      REAL    ALB,EEQ,f,Tmed,LAI
-      REAL TMAX, TMIN, SRAD, ETP
+    !-----------------------------------------------------------------------
+    IMPLICIT NONE
+    SAVE
+    REAL    ALB, EEQ, f, Tmed, LAI
+    REAL TMAX, TMIN, SRAD, ETP
 
-!-----------------------------------------------------------------------
-      ALB =  0.1 * EXP(-0.7 * LAI) + 0.2 * (1 - EXP(-0.7 * LAI))
-      Tmed = 0.6 * TMAX + 0.4 * TMIN
-      EEQ = SRAD * (4.88E-03 - 4.37E-03 * ALB) * (Tmed + 29)
+    !-----------------------------------------------------------------------
+    ALB = 0.1 * EXP(-0.7 * LAI) + 0.2 * (1 - EXP(-0.7 * LAI))
+    Tmed = 0.6 * TMAX + 0.4 * TMIN
+    EEQ = SRAD * (4.88E-03 - 4.37E-03 * ALB) * (Tmed + 29)
 
-      IF (TMAX .LT. 5) THEN
-        f = 0.01 * EXP(0.18 *(TMAX + 20))
-      ELSEIF (TMAX .GT. 35) THEN
+    IF (TMAX .LT. 5) THEN
+        f = 0.01 * EXP(0.18 * (TMAX + 20))
+    ELSEIF (TMAX .GT. 35) THEN
         f = 1.1 + 0.05 * (TMAX - 35)
-      ELSE
+    ELSE
         f = 1.1
-      ENDIF
+    ENDIF
 
-      ETp = f * EEQ
-!-----------------------------------------------------------------------
-      RETURN
-      END SUBROUTINE ETPS
+    ETp = f * EEQ
+    !-----------------------------------------------------------------------
+    RETURN
+END SUBROUTINE ETPS
 !************************************************************************
 
 
@@ -336,43 +336,43 @@ end subroutine swinteg
 
 !-----------------------------------------------------------------------
 
-      SUBROUTINE RUNOFF(POTINF, CN, ROF, DYN)
+SUBROUTINE RUNOFF(POTINF, CN, ROF, DYN)
 
-!-----------------------------------------------------------------------
-      IMPLICIT NONE
-      SAVE
-      CHARACTER*10 DYN
-      REAL S, CN
-      REAL POTINF, ROF
+    !-----------------------------------------------------------------------
+    IMPLICIT NONE
+    SAVE
+    CHARACTER*10 DYN
+    REAL S, CN
+    REAL POTINF, ROF
 
-!************************************************************************
-!************************************************************************
-!     INITIALIZATION
-!************************************************************************
-      IF (INDEX(DYN,'INITIAL') .NE. 0) THEN
-!************************************************************************
-        S = 254 * (100/CN - 1)
+    !************************************************************************
+    !************************************************************************
+    !     INITIALIZATION
+    !************************************************************************
+    IF (INDEX(DYN, 'INITIAL') .NE. 0) THEN
+        !************************************************************************
+        S = 254 * (100 / CN - 1)
 
-!************************************************************************
-!************************************************************************
-!     RATE CALCULATIONS
-!************************************************************************
-      ELSEIF (INDEX(DYN,'RATE') .NE. 0) THEN
-!************************************************************************
+        !************************************************************************
+        !************************************************************************
+        !     RATE CALCULATIONS
+        !************************************************************************
+    ELSEIF (INDEX(DYN, 'RATE') .NE. 0) THEN
+        !************************************************************************
         IF (POTINF .GT. 0.2 * S)  THEN
-          ROF = ((POTINF - 0.2 * S)**2)/(POTINF + 0.8 * S)
+            ROF = ((POTINF - 0.2 * S)**2) / (POTINF + 0.8 * S)
         ELSE
-          ROF = 0
+            ROF = 0
         ENDIF
 
-!************************************************************************
-!************************************************************************
-!     End of dynamic 'IF' construct
-!************************************************************************
-      ENDIF
-!************************************************************************
-      RETURN
-      END SUBROUTINE RUNOFF
+        !************************************************************************
+        !************************************************************************
+        !     End of dynamic 'IF' construct
+        !************************************************************************
+    ENDIF
+    !************************************************************************
+    RETURN
+END SUBROUTINE RUNOFF
 !************************************************************************
 
 
@@ -384,74 +384,74 @@ end subroutine swinteg
 ! *     Input:  SWC, DP, FC, ST, WP
 ! *     Output: SWFAC1, SWFAC2
 !************************************************************************
-      SUBROUTINE STRESS(SWC, DP, FC, ST, WP, SWFAC1, SWFAC2, DYN)
+SUBROUTINE STRESS(SWC, DP, FC, ST, WP, SWFAC1, SWFAC2, DYN)
 
-!-----------------------------------------------------------------------
-      IMPLICIT NONE
-      SAVE
-      CHARACTER*10 DYN
-      REAL FC, ST, SWC, WP, SWFAC2, SWFAC1
-      REAL DP, DWT, WTABLE, THE
-      REAL, PARAMETER :: STRESS_DEPTH = 250   !Water table depth below
-                                           !which no stress occurs (mm)
-!************************************************************************
-!************************************************************************
-!     INITIALIZATION
-!************************************************************************
-      IF (INDEX(DYN,'INITIAL') .NE. 0) THEN
-!************************************************************************
+    !-----------------------------------------------------------------------
+    IMPLICIT NONE
+    SAVE
+    CHARACTER*10 DYN
+    REAL FC, ST, SWC, WP, SWFAC2, SWFAC1
+    REAL DP, DWT, WTABLE, THE
+    REAL, PARAMETER :: STRESS_DEPTH = 250   !Water table depth below
+    !which no stress occurs (mm)
+    !************************************************************************
+    !************************************************************************
+    !     INITIALIZATION
+    !************************************************************************
+    IF (INDEX(DYN, 'INITIAL') .NE. 0) THEN
+        !************************************************************************
         THE = WP + 0.75 * (FC - WP)   !threshold for drought stress (mm)
 
-      ENDIF
+    ENDIF
 
-!************************************************************************
-!************************************************************************
-!     INTEGRATION (also done for initialization)
-!************************************************************************
-      IF (INDEX(DYN,'INTEG') .NE. 0 .OR. INDEX(DYN,'INITIAL') .NE. 0) THEN
-!************************************************************************
-!     Drought stress factor - SWFAC1
-!-----------------------------------------------------------------------
+    !************************************************************************
+    !************************************************************************
+    !     INTEGRATION (also done for initialization)
+    !************************************************************************
+    IF (INDEX(DYN, 'INTEG') .NE. 0 .OR. INDEX(DYN, 'INITIAL') .NE. 0) THEN
+        !************************************************************************
+        !     Drought stress factor - SWFAC1
+        !-----------------------------------------------------------------------
         IF (SWC .LT. WP) THEN
-          SWFAC1 = 0.0
+            SWFAC1 = 0.0
         ELSEIF (SWC .GT. THE) THEN
-          SWFAC1 = 1.0
+            SWFAC1 = 1.0
         ELSE
-          SWFAC1 = (SWC - WP) / (THE - WP)
-          SWFAC1 = MAX(MIN(SWFAC1, 1.0), 0.0)
+            SWFAC1 = (SWC - WP) / (THE - WP)
+            SWFAC1 = MAX(MIN(SWFAC1, 1.0), 0.0)
         ENDIF
 
-!-----------------------------------------------------------------------
-!     Excess water stress factor - SWFAC2
-!-----------------------------------------------------------------------
+        !-----------------------------------------------------------------------
+        !     Excess water stress factor - SWFAC2
+        !-----------------------------------------------------------------------
         IF (SWC .LE. FC) THEN
-          WTABLE = 0.0
-          DWT = DP * 10.              !DP in cm, DWT in mm
-          SWFAC2 = 1.0
-        ELSE
-      !FC water is distributed evenly throughout soil profile.  Any
-      !  water in excess of FC creates a free water surface
-      !WTABLE - thickness of water table (mm)
-      !DWT - depth to water table from surface (mm)
-          WTABLE = (SWC - FC) / (ST - FC) * DP * 10.
-          DWT = DP * 10. - WTABLE
-
-          IF (DWT .GE. STRESS_DEPTH) THEN
+            WTABLE = 0.0
+            DWT = DP * 10.              !DP in cm, DWT in mm
             SWFAC2 = 1.0
-          ELSE
-            SWFAC2 = DWT / STRESS_DEPTH
-          ENDIF
-          SWFAC2 = MAX(MIN(SWFAC2, 1.0), 0.0)
+        ELSE
+            !FC water is distributed evenly throughout soil profile.  Any
+            !  water in excess of FC creates a free water surface
+            !WTABLE - thickness of water table (mm)
+            !DWT - depth to water table from surface (mm)
+            WTABLE = (SWC - FC) / (ST - FC) * DP * 10.
+            DWT = DP * 10. - WTABLE
+
+            IF (DWT .GE. STRESS_DEPTH) THEN
+                SWFAC2 = 1.0
+            ELSE
+                SWFAC2 = DWT / STRESS_DEPTH
+            ENDIF
+            SWFAC2 = MAX(MIN(SWFAC2, 1.0), 0.0)
         ENDIF
 
-!************************************************************************
-!************************************************************************
-!     End of dynamic 'IF' construct
-!************************************************************************
-      ENDIF
-!************************************************************************
-      RETURN
-      END SUBROUTINE STRESS
+        !************************************************************************
+        !************************************************************************
+        !     End of dynamic 'IF' construct
+        !************************************************************************
+    ENDIF
+    !************************************************************************
+    RETURN
+END SUBROUTINE STRESS
 !************************************************************************
 
 
@@ -465,62 +465,61 @@ end subroutine swinteg
 !     Output: None
 !************************************************************************
 
-      SUBROUTINE WBAL(SWC_INIT, SWC, TDRN, TEPA, &
+SUBROUTINE WBAL(SWC_INIT, SWC, TDRN, TEPA, &
         TESA, TIRR, TRAIN, TROF, SWC_ADJ, TINF)
 
-!-----------------------------------------------------------------------
-      IMPLICIT NONE
-      SAVE
-      INTEGER, PARAMETER :: LSWC = 21
-      REAL SWC, SWC_INIT
-      REAL TDRN, TEPA, TESA, TIRR, TRAIN, TROF
-      REAL WATBAL, SWC_ADJ, TINF
-      REAL CHECK
-!-----------------------------------------------------------------------
-      OPEN (LSWC, FILE = 'WBAL.OUT', STATUS = 'REPLACE')
+    !-----------------------------------------------------------------------
+    IMPLICIT NONE
+    SAVE
+    INTEGER, PARAMETER :: LSWC = 21
+    REAL SWC, SWC_INIT
+    REAL TDRN, TEPA, TESA, TIRR, TRAIN, TROF
+    REAL WATBAL, SWC_ADJ, TINF
+    REAL CHECK
+    !-----------------------------------------------------------------------
+    OPEN (LSWC, FILE = 'output/wbal.out', STATUS = 'REPLACE')
 
-      WATBAL = (SWC_INIT - SWC) + (TRAIN + TIRR) - &
-!      0.0   =(Change in storage)+  (Inflows)    -
-                 (TESA + TEPA + TROF + TDRN)
-!                         (Outflows)
+    WATBAL = (SWC_INIT - SWC) + (TRAIN + TIRR) - &
+            !      0.0   =(Change in storage)+  (Inflows)    -
+            (TESA + TEPA + TROF + TDRN)
+    !                         (Outflows)
 
-      WRITE(*,100)   SWC_INIT, SWC, TRAIN, TIRR, TESA, TEPA, TROF, TDRN
-      WRITE(LSWC,100)SWC_INIT, SWC, TRAIN, TIRR, TESA, TEPA, TROF, TDRN
-  100 FORMAT(//, 'SEASONAL SOIL WATER BALANCE', //, &
-            'Initial soil water content (mm):',F10.3,/, &
-            'Final soil water content (mm):  ',F10.3,/, &
-            'Total rainfall depth (mm):      ',F10.3,/, &
-            'Total irrigation depth (mm):    ',F10.3,/, &
-            'Total soil evaporation (mm):    ',F10.3,/, &
-            'Total plant transpiration (mm): ',F10.3,/, &
-            'Total surface runoff (mm):      ',F10.3,/, &
-            'Total vertical drainage (mm):   ',F10.3,/)
+    WRITE(*, 100)   SWC_INIT, SWC, TRAIN, TIRR, TESA, TEPA, TROF, TDRN
+    WRITE(LSWC, 100)SWC_INIT, SWC, TRAIN, TIRR, TESA, TEPA, TROF, TDRN
+    100 FORMAT(//, 'SEASONAL SOIL WATER BALANCE', //, &
+            'Initial soil water content (mm):', F10.3, /, &
+            'Final soil water content (mm):  ', F10.3, /, &
+            'Total rainfall depth (mm):      ', F10.3, /, &
+            'Total irrigation depth (mm):    ', F10.3, /, &
+            'Total soil evaporation (mm):    ', F10.3, /, &
+            'Total plant transpiration (mm): ', F10.3, /, &
+            'Total surface runoff (mm):      ', F10.3, /, &
+            'Total vertical drainage (mm):   ', F10.3, /)
 
-      IF (SWC_ADJ .NE. 0.0) THEN
-        WRITE(*,110) SWC_ADJ
-        WRITE(LSWC,110) SWC_ADJ
-  110   FORMAT('Added water for SWC<0 (mm):     ',E10.3,/)
-      ENDIF
+    IF (SWC_ADJ .NE. 0.0) THEN
+        WRITE(*, 110) SWC_ADJ
+        WRITE(LSWC, 110) SWC_ADJ
+        110   FORMAT('Added water for SWC<0 (mm):     ', E10.3, /)
+    ENDIF
 
-      WRITE(*   ,200) WATBAL
-      WRITE(LSWC,200) WATBAL
-  200 FORMAT('Water Balance (mm):             ',F10.3,//)
+    WRITE(*, 200) WATBAL
+    WRITE(LSWC, 200) WATBAL
+    200 FORMAT('Water Balance (mm):             ', F10.3, //)
 
-      CHECK = TRAIN + TIRR - TROF
-      IF ((CHECK - TINF) .GT. 0.0005) THEN
-        WRITE(*,300) CHECK, TINF, (CHECK - TINF)
-        WRITE(LSWC,300) CHECK, TINF, (CHECK - TINF)
-  300   FORMAT(/,'Error: TRAIN + TIRR - TROF = ',F10.4,/, &
-                 'Total infiltration =         ',F10.4,/, &
-                 'Difference =                 ',F10.4)
-      ENDIF
+    CHECK = TRAIN + TIRR - TROF
+    IF ((CHECK - TINF) .GT. 0.0005) THEN
+        WRITE(*, 300) CHECK, TINF, (CHECK - TINF)
+        WRITE(LSWC, 300) CHECK, TINF, (CHECK - TINF)
+        300   FORMAT(/, 'Error: TRAIN + TIRR - TROF = ', F10.4, /, &
+                'Total infiltration =         ', F10.4, /, &
+                'Difference =                 ', F10.4)
+    ENDIF
 
-      CLOSE (LSWC)
+    CLOSE (LSWC)
 
-!-----------------------------------------------------------------------
-      RETURN
-      END SUBROUTINE WBAL
-
+    !-----------------------------------------------------------------------
+    RETURN
+END SUBROUTINE WBAL
 
 
 !************************************************************************
