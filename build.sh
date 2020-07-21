@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-gfortran -Wall -Wextra *.f95 -o sc
+gfortran -Wall -Wextra src/*.f95 -o sc
