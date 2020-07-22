@@ -34,11 +34,11 @@ contains
         write(1, 12)
         11 format('results of plant growth simulation: ')
         12 format(/ &
-                /, '                accum', &
-                /, '       number    temp                                    leaf', &
-                /, '  day      of  during   plant  canopy    root   fruit    area', &
-                /, '   of    leaf  reprod  weight  weight  weight  weight   index', &
-                /, ' year   nodes    (oc)  (g/m2)  (g/m2)  (g/m2)  (g/m2) (m2/m2)', &
+                /, '                Accum', &
+                /, '       Number    Temp                                    Leaf', &
+                /, '  Day      of  during   Plant  Canopy    Root   Fruit    Area', &
+                /, '   of    Leaf  Reprod  Weight  Weight  Weight  weight   Index', &
+                /, ' Year   Nodes    (oC)  (g/m2)  (g/m2)  (g/m2)  (g/m2) (m2/m2)', &
                 /, ' ----  ------  ------  ------  ------  ------  ------  ------')
 
         write(*, 11)
@@ -67,11 +67,11 @@ contains
             write(*, 30)
             30 format(2/)
             31 format(/ &
-                /, '                accum', &
-                /, '       number    temp                                    leaf', &
-                /, '  day      of  during   plant  canopy    root   fruit    area', &
-                /, '   of    leaf  reprod  weight  weight  weight  weight   index', &
-                /, ' year   nodes    (oc)  (g/m2)  (g/m2)  (g/m2)  (g/m2) (m2/m2)', &
+                /, '                Accum', &
+                /, '       Number    Temp                                    Leaf', &
+                /, '  Day      of  During   Plant  Canopy    Root   Fruit    Area', &
+                /, '   of    Leaf  Reprod  Weight  Weight  Weight  Weight   Index', &
+                /, ' Year   Nodes    (oC)  (g/m2)  (g/m2)  (g/m2)  (g/m2) (m2/m2)', &
                 /, ' ----  ------  ------  ------  ------  ------  ------  ------')
             write(*, 31)
         endif
