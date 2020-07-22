@@ -142,7 +142,7 @@ contains
         m%TDRN = m%TDRN + m%DRN
         m%TROF = m%TROF + m%ROF
 
-        call stress_integ(m%SWC, m%DP, m%FC, m%ST, m%WP, m%SWFAC1, m%SWFAC2)
+        call stress_integ(m%SWC, m%DP, m%FC, m%ST, m%WP, m%SWFAC1, m%SWFAC2, m%the)
     end subroutine integ
 
     subroutine c_integ(m) bind(c, name = 'soil_integ')
