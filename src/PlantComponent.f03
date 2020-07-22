@@ -15,6 +15,89 @@ module PlantComponent
         integer(c_int) :: doy, endsim, count
     end type PlantModel
 contains
+    !***********************************************************************
+    !     subroutine lais
+    !     calculates the canopy leaf area index (lai)
+    !-----------------------------------------------------------------------
+    !     input:  fl, di, pd, emp1, emp2, n, nb, swfac1, swfac2, pt, dn
+    !     output: dlai
+    !************************************************************************
+    ! pure
+    subroutine lais(fl, di, pd, emp1, emp2, n, nb, swfac1, swfac2, pt, &
+            dn, p1, sla, dlai)
+
+        !-----------------------------------------------------------------------
+        implicit none
+        save
+        real :: pd, emp1, emp2, n, nb, dlai, swfac, a, dn, p1, sla
+        real :: swfac1, swfac2, pt, di, fl
+        !-----------------------------------------------------------------------
+
+        swfac = min(swfac1, swfac2)
+        if (fl == 1.0) then
+            a = exp(emp2 * (n - nb))
+            dlai = swfac * pd * emp1 * pt * (a / (1 + a)) * dn
+        elseif (fl == 2.0) then
+
+            dlai = - pd * di * p1 * sla
+
+        endif
+        !-----------------------------------------------------------------------
+        return
+    end subroutine lais
+    !***********************************************************************
+
+
+
+    !****************************************************************************
+    !     subroutine pgs
+    !     calculates the canopy gross photosysntesis rate (pg)
+    !*****************************************************************************
+    ! pure
+    subroutine pgs(swfac1, swfac2, par, pd, pt, lai, pg)
+
+        !-----------------------------------------------------------------------
+        implicit none
+        save
+        real :: par, lai, pg, pt, y1
+        real :: swfac1, swfac2, swfac, rowspc, pd
+
+        !-----------------------------------------------------------------------
+        !     rowsp = row spacing
+        !     y1 = canopy light extinction coefficient
+
+        swfac = min(swfac1, swfac2)
+        rowspc = 60.0
+        y1 = 1.5 - 0.768 * ((rowspc * 0.01)**2 * pd)**0.1
+        pg = pt * swfac * 2.1 * par / pd * (1.0 - exp(-y1 * lai))
+
+        !-----------------------------------------------------------------------
+        return
+    end subroutine pgs
+    !***********************************************************************
+
+
+
+    !***********************************************************************
+    !     subroutine pts
+    !     calculates the factor that incorporates the effect of temperature
+    !     on photosynthesis
+    !************************************************************************
+    subroutine pts(tmax, tmin, pt)
+        !-----------------------------------------------------------------------
+        implicit none
+        save
+        real :: pt, tmax, tmin
+
+        !-----------------------------------------------------------------------
+        pt = 1.0 - 0.0025 * ((0.25 * tmin + 0.75 * tmax) - 26.0)**2
+
+        !-----------------------------------------------------------------------
+        return
+    end subroutine pts
+    !***********************************************************************
+    !***********************************************************************
+
     subroutine initialize_from_file(m)
         use iso_c_binding
         implicit none
@@ -47,7 +130,7 @@ contains
         m%count = 0
     end subroutine initialize_from_file
 
-    subroutine c_inititialize_from_file(m) bind(c, name='pm_initialize_from_file')
+    subroutine c_inititialize_from_file(m) bind(c, name = 'pm_initialize_from_file')
         use iso_c_binding
         implicit none
         type(PlantModel) :: m
@@ -67,12 +150,12 @@ contains
             write(*, 30)
             30 format(2/)
             31 format(/ &
-                /, '                Accum', &
-                /, '       Number    Temp                                    Leaf', &
-                /, '  Day      of  During   Plant  Canopy    Root   Fruit    Area', &
-                /, '   of    Leaf  Reprod  Weight  Weight  Weight  Weight   Index', &
-                /, ' Year   Nodes    (oC)  (g/m2)  (g/m2)  (g/m2)  (g/m2) (m2/m2)', &
-                /, ' ----  ------  ------  ------  ------  ------  ------  ------')
+                    /, '                Accum', &
+                    /, '       Number    Temp                                    Leaf', &
+                    /, '  Day      of  During   Plant  Canopy    Root   Fruit    Area', &
+                    /, '   of    Leaf  Reprod  Weight  Weight  Weight  Weight   Index', &
+                    /, ' Year   Nodes    (oC)  (g/m2)  (g/m2)  (g/m2)  (g/m2) (m2/m2)', &
+                    /, ' ----  ------  ------  ------  ------  ------  ------  ------')
             write(*, 31)
         endif
 
@@ -80,7 +163,7 @@ contains
         write(*, 20) m%doy, m%n, m%intc, m%w, m%wc, m%wr, m%wf, m%lai
     end subroutine output_to_file
 
-    subroutine c_output_to_file(m) bind(c, name='pm_output_to_file')
+    subroutine c_output_to_file(m) bind(c, name = 'pm_output_to_file')
         use iso_c_binding
         implicit none
         type(PlantModel) :: m
@@ -93,7 +176,7 @@ contains
         close(1)
     end subroutine close_file
 
-    subroutine c_close(m) bind(c, name='pm_close')
+    subroutine c_close(m) bind(c, name = 'pm_close')
         implicit none
         type(PlantModel) :: m
         call close_file(m)
@@ -143,7 +226,7 @@ contains
         endif
     end subroutine rate
 
-    subroutine c_rate(m) bind(c, name='pm_rate')
+    subroutine c_rate(m) bind(c, name = 'pm_rate')
         implicit none
         type(PlantModel) :: m
         call rate(m)
@@ -154,12 +237,12 @@ contains
         type(PlantInput) :: input
         m%tmax = input%tmax
         m%tmin = input%tmin
-        m%par  = input%par
+        m%par = input%par
         m%swfac1 = input%swfac1
         m%swfac2 = input%swfac2
     end subroutine update
 
-    subroutine c_update(m, input) bind(c, name='pm_update')
+    subroutine c_update(m, input) bind(c, name = 'pm_update')
         implicit none
         type(PlantModel) :: m
         type(PlantInput) :: input
@@ -190,7 +273,7 @@ contains
         endif
     end subroutine integ
 
-    subroutine c_integ(m) bind(c, name='pm_integ')
+    subroutine c_integ(m) bind(c, name = 'pm_integ')
         implicit none
         type(PlantModel) :: m
         call integ(m)

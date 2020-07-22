@@ -58,7 +58,7 @@ subroutine plant(&
         dyn)                                           !control
 
     !-----------------------------------------------------------------------
-    use PlantComponent, only: initialize_from_file, rate, integ, output_to_file, close_file, PlantModel, PlantInput
+    use PlantComponent
     use iso_c_binding
     implicit none
     save
@@ -132,89 +132,4 @@ subroutine plant(&
     swfac2 = model%swfac2
     lai = model%lai
 end subroutine plant
-!***********************************************************************
-
-
-
-!***********************************************************************
-!     subroutine lais
-!     calculates the canopy leaf area index (lai)
-!-----------------------------------------------------------------------
-!     input:  fl, di, pd, emp1, emp2, n, nb, swfac1, swfac2, pt, dn
-!     output: dlai
-!************************************************************************
-! pure
-subroutine lais(fl, di, pd, emp1, emp2, n, nb, swfac1, swfac2, pt, &
-        dn, p1, sla, dlai)
-
-    !-----------------------------------------------------------------------
-    implicit none
-    save
-    real :: pd, emp1, emp2, n, nb, dlai, swfac, a, dn, p1, sla
-    real :: swfac1, swfac2, pt, di, fl
-    !-----------------------------------------------------------------------
-
-    swfac = min(swfac1, swfac2)
-    if (fl == 1.0) then
-        a = exp(emp2 * (n - nb))
-        dlai = swfac * pd * emp1 * pt * (a / (1 + a)) * dn
-    elseif (fl == 2.0) then
-
-        dlai = - pd * di * p1 * sla
-
-    endif
-    !-----------------------------------------------------------------------
-    return
-end subroutine lais
-!***********************************************************************
-
-
-
-!****************************************************************************
-!     subroutine pgs
-!     calculates the canopy gross photosysntesis rate (pg)
-!*****************************************************************************
-! pure
-subroutine pgs(swfac1, swfac2, par, pd, pt, lai, pg)
-
-    !-----------------------------------------------------------------------
-    implicit none
-    save
-    real :: par, lai, pg, pt, y1
-    real :: swfac1, swfac2, swfac, rowspc, pd
-
-    !-----------------------------------------------------------------------
-    !     rowsp = row spacing
-    !     y1 = canopy light extinction coefficient
-
-    swfac = min(swfac1, swfac2)
-    rowspc = 60.0
-    y1 = 1.5 - 0.768 * ((rowspc * 0.01)**2 * pd)**0.1
-    pg = pt * swfac * 2.1 * par / pd * (1.0 - exp(-y1 * lai))
-
-    !-----------------------------------------------------------------------
-    return
-end subroutine pgs
-!***********************************************************************
-
-
-
-!***********************************************************************
-!     subroutine pts
-!     calculates the factor that incorporates the effect of temperature
-!     on photosynthesis
-!************************************************************************
-subroutine pts(tmax, tmin, pt)
-    !-----------------------------------------------------------------------
-    implicit none
-    save
-    real :: pt, tmax, tmin
-
-    !-----------------------------------------------------------------------
-    pt = 1.0 - 0.0025 * ((0.25 * tmin + 0.75 * tmax) - 26.0)**2
-
-    !-----------------------------------------------------------------------
-    return
-end subroutine pts
-!***********************************************************************
 !***********************************************************************
