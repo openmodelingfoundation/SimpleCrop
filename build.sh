@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-gfortran -Wall -Wextra src/*.f95 -o sc
+gfortran-8 -Wall -Wextra -g -pedantic -std=f2003 src/*.f03 -o sc

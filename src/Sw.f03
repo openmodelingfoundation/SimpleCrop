@@ -1,17 +1,3 @@
-subroutine swrate(x)
-    IMPLICIT NONE
-    real x
-
-    x = x * 2
-end subroutine swrate
-
-subroutine swinteg(x)
-    implicit none
-    real x
-
-    x = x * 2
-end subroutine swinteg
-
 !************************************************************************
 !************************************************************************
 ! *     Subroutine SW
@@ -74,59 +60,32 @@ SUBROUTINE SW(&
         DYN)                                            !Control
 
     !-----------------------------------------------------------------------
+    use SoilComponent
     IMPLICIT NONE
     SAVE
 
-    INTEGER   DATE, DOY
-    REAL      SRAD, TMAX, TMIN, RAIN, SWC, INF, IRR, ROF, ESa, EPa, DRNp
-    REAL      DRN, DP, WPp, FCp, STp, WP, FC, ST, ESp, EPp, ETp, LAI
-    CHARACTER*10 DYN
+    integer :: doy
+    real :: lai, rain, srad, tmax, tmin, swfac1, swfac2
+    character(len=10) :: dyn
+    type(SoilModel) :: m
+    type(IrrigationInput) :: irrigation
 
-    REAL CN, SWFAC1, SWFAC2, POTINF
-    REAL SWC_INIT, TRAIN, TIRR, TESA, TEPA, TROF, TDRN
-    REAL TINF, SWC_ADJ
+    m%doy = doy
+    m%lai = lai
+    m%rain = rain
+    m%srad = srad
+    m%tmax = tmax
+    m%tmin = tmin
+    m%swfac1 = swfac1
+    m%swfac2 = swfac2
 
     !************************************************************************
     !************************************************************************
     !     INITIALIZATION
     !************************************************************************
-    IF (INDEX(DYN, 'INITIAL') .NE. 0) THEN
+    if (index(dyn, 'INITIAL') .ne. 0) then
         !************************************************************************
-        OPEN(3, FILE = 'data/soil.inp', STATUS = 'UNKNOWN')
-        OPEN(10, FILE = 'output/soil.out', STATUS = 'REPLACE')
-        OPEN(11, FILE = 'data/irrig.inp', STATUS = 'UNKNOWN')
-
-        READ(3, '(5X,F5.2,5X,F5.2,5X,F5.2,5X,F7.2,5X,F5.2,5X,F5.2,5X,F5.2)') WPp, FCp, STp, DP, DRNp, CN, SWC
-        CLOSE(3)
-
-        WRITE(10, 15)
-        15  FORMAT('Results of soil water balance simulation:', &
-                /, 105X, 'Soil', /, 73X, 'Pot.  Actual  Actual    Soil   Water', &
-                10X, 'Excess', /, '  Day   Solar     Max     Min', 42X, &
-                'Evapo-    Soil   Plant   Water Content Drought   Water', &
-                /, '   of    Rad.    Temp    Temp    Rain   Irrig  Runoff', &
-                '   Infil   Drain   Trans   Evap.  Trans. content   (mm3/', &
-                '  Stress  Stress', /, ' Year (MJ/m2)    (oC)    (oC)    (mm)', &
-                '    (mm)    (mm)    (mm)    (mm)    (mm)    (mm)    (mm)', &
-                '    (mm)    mm3)  Factor  Factor')
-
-        WP = DP * WPp * 10.0
-        FC = DP * FCp * 10.0
-        ST = DP * STp * 10.0
-        SWC_INIT = SWC
-
-        CALL RUNOFF(POTINF, CN, ROF, 'INITIAL   ')
-        CALL STRESS(SWC, DP, FC, ST, WP, SWFAC1, SWFAC2, 'INITIAL   ')
-
-        !     Keep totals for water balance
-        TRAIN = 0.0
-        TIRR = 0.0
-        TESA = 0.0
-        TEPA = 0.0
-        TROF = 0.0
-        TDRN = 0.0
-        TINF = 0.0
-        SWC_ADJ = 0.0
+        call initialize_from_files(m)
 
         !************************************************************************
         !************************************************************************
@@ -134,31 +93,10 @@ SUBROUTINE SW(&
         !************************************************************************
     ELSEIF (INDEX(DYN, 'RATE') .NE. 0) THEN
         !************************************************************************
-        READ(11, 25) DATE, IRR
-        25   FORMAT(I5, 2X, F4.1)
-
-        TIRR = TIRR + IRR
-        POTINF = RAIN + IRR
-        TRAIN = TRAIN + RAIN
-        CALL DRAINE(SWC, FC, DRNp, DRN)
-
-        IF (POTINF .GT. 0.0) THEN
-            CALL RUNOFF(POTINF, CN, ROF, 'RATE      ')
-            INF = POTINF - ROF
-        ELSE
-            ROF = 0.0
-            INF = 0.0
-        ENDIF
-
-        !     Potential evapotranspiration (ETp), soil evaporation (ESp) and
-        !       plant transpiration (EPp)
-        CALL ETpS(SRAD, TMAX, TMIN, LAI, ETp)
-        ESp = ETp * EXP(-0.7 * LAI)
-        EPp = ETp * (1 - EXP(-0.7 * LAI))
-
-        !     Actual soil evaporation (ESa), plant transpiration (EPa)
-        CALL ESaS(ESp, SWC, FC, WP, ESa)
-        EPa = EPp * MIN(SWFAC1, SWFAC2)
+        call read_irrig(irrigation)
+        m%date = irrigation%date
+        m%irr  = irrigation%irr
+        call rate(m)
 
         !************************************************************************
         !************************************************************************
@@ -166,25 +104,7 @@ SUBROUTINE SW(&
         !************************************************************************
     ELSEIF (INDEX(DYN, 'INTEG') .NE. 0) THEN
         !************************************************************************
-        SWC = SWC + (INF - ESa - EPa - DRN)
-
-        IF (SWC .GT. ST) THEN
-            ROF = ROF + (SWC - ST)
-            SWC = ST
-        ENDIF
-
-        IF (SWC .LT. 0.0) THEN
-            SWC_ADJ = SWC_ADJ - SWC
-            SWC = 0.0
-        ENDIF
-
-        TINF = TINF + INF
-        TESA = TESA + ESA
-        TEPA = TEPA + EPA
-        TDRN = TDRN + DRN
-        TROF = TROF + ROF
-
-        CALL STRESS(SWC, DP, FC, ST, WP, SWFAC1, SWFAC2, 'INTEG     ')
+        call integ(m)
 
         !************************************************************************
         !************************************************************************
@@ -192,19 +112,14 @@ SUBROUTINE SW(&
         !************************************************************************
     ELSEIF (INDEX(DYN, 'OUTPUT    ') .NE. 0) THEN
         !************************************************************************
-        WRITE(10, '(I5,3F8.1,9F8.2,3F8.3)') DOY, SRAD, TMAX, TMIN, RAIN, IRR, ROF, INF, DRN, &
-                ETP, ESa, EPa, SWC, SWC / DP, SWFAC1, SWFAC2
-
+        call output_to_files(m)
         !************************************************************************
         !************************************************************************
         !     CLOSE
         !************************************************************************
     ELSEIF (INDEX(DYN, 'CLOSE') .NE. 0) THEN
         !************************************************************************
-        CALL WBAL(SWC_INIT, SWC, TDRN, TEPA, &
-                TESA, TIRR, TRAIN, TROF, SWC_ADJ, TINF)
-        CLOSE(10)
-        CLOSE(11)
+        call close_files(m)
 
         !************************************************************************
         !************************************************************************
@@ -212,10 +127,16 @@ SUBROUTINE SW(&
         !************************************************************************
     ENDIF
     !************************************************************************
-    RETURN
+    doy = m%doy
+    lai = m%lai
+    rain = m%rain
+    srad = m%srad
+    tmax = m%tmax
+    tmin = m%tmin
+    swfac1 = m%swfac1
+    swfac2 = m%swfac2
 END SUBROUTINE SW
 !************************************************************************
-
 
 
 !************************************************************************
@@ -336,46 +257,16 @@ END SUBROUTINE ETPS
 
 !-----------------------------------------------------------------------
 
-SUBROUTINE RUNOFF(POTINF, CN, ROF, DYN)
+subroutine runoff_rate(potinf, rof, s)
+    implicit none
+    real :: potinf, rof, s
 
-    !-----------------------------------------------------------------------
-    IMPLICIT NONE
-    SAVE
-    CHARACTER*10 DYN
-    REAL S, CN
-    REAL POTINF, ROF
-
-    !************************************************************************
-    !************************************************************************
-    !     INITIALIZATION
-    !************************************************************************
-    IF (INDEX(DYN, 'INITIAL') .NE. 0) THEN
-        !************************************************************************
-        S = 254 * (100 / CN - 1)
-
-        !************************************************************************
-        !************************************************************************
-        !     RATE CALCULATIONS
-        !************************************************************************
-    ELSEIF (INDEX(DYN, 'RATE') .NE. 0) THEN
-        !************************************************************************
-        IF (POTINF .GT. 0.2 * S)  THEN
-            ROF = ((POTINF - 0.2 * S)**2) / (POTINF + 0.8 * S)
-        ELSE
-            ROF = 0
-        ENDIF
-
-        !************************************************************************
-        !************************************************************************
-        !     End of dynamic 'IF' construct
-        !************************************************************************
+    IF (POTINF .GT. 0.2 * S)  THEN
+        ROF = ((POTINF - 0.2 * S)**2) / (POTINF + 0.8 * S)
+    ELSE
+        ROF = 0
     ENDIF
-    !************************************************************************
-    RETURN
-END SUBROUTINE RUNOFF
-!************************************************************************
-
-
+end subroutine runoff_rate
 
 !************************************************************************
 ! *     Sub-subroutine STRESS calculates soil water stresses.
@@ -384,77 +275,44 @@ END SUBROUTINE RUNOFF
 ! *     Input:  SWC, DP, FC, ST, WP
 ! *     Output: SWFAC1, SWFAC2
 !************************************************************************
-SUBROUTINE STRESS(SWC, DP, FC, ST, WP, SWFAC1, SWFAC2, DYN)
+
+subroutine stress_integ(SWC, DP, FC, ST, WP, SWFAC1, SWFAC2, the)
+    implicit none
+    real :: swc, dp, fc, st, wp, swfac1, swfac2, the
+    real, parameter :: STRESS_DEPTH = 250
+    real :: wtable, dwt
+    IF (SWC .LT. WP) THEN
+        SWFAC1 = 0.0
+    ELSEIF (SWC .GT. THE) THEN
+        SWFAC1 = 1.0
+    ELSE
+        SWFAC1 = (SWC - WP) / (THE - WP)
+        SWFAC1 = MAX(MIN(SWFAC1, 1.0), 0.0)
+    ENDIF
 
     !-----------------------------------------------------------------------
-    IMPLICIT NONE
-    SAVE
-    CHARACTER*10 DYN
-    REAL FC, ST, SWC, WP, SWFAC2, SWFAC1
-    REAL DP, DWT, WTABLE, THE
-    REAL, PARAMETER :: STRESS_DEPTH = 250   !Water table depth below
-    !which no stress occurs (mm)
-    !************************************************************************
-    !************************************************************************
-    !     INITIALIZATION
-    !************************************************************************
-    IF (INDEX(DYN, 'INITIAL') .NE. 0) THEN
-        !************************************************************************
-        THE = WP + 0.75 * (FC - WP)   !threshold for drought stress (mm)
+    !     Excess water stress factor - SWFAC2
+    !-----------------------------------------------------------------------
+    IF (SWC .LE. FC) THEN
+        WTABLE = 0.0
+        DWT = DP * 10.              !DP in cm, DWT in mm
+        SWFAC2 = 1.0
+    ELSE
+        !FC water is distributed evenly throughout soil profile.  Any
+        !  water in excess of FC creates a free water surface
+        !WTABLE - thickness of water table (mm)
+        !DWT - depth to water table from surface (mm)
+        WTABLE = (SWC - FC) / (ST - FC) * DP * 10.
+        DWT = DP * 10. - WTABLE
 
-    ENDIF
-
-    !************************************************************************
-    !************************************************************************
-    !     INTEGRATION (also done for initialization)
-    !************************************************************************
-    IF (INDEX(DYN, 'INTEG') .NE. 0 .OR. INDEX(DYN, 'INITIAL') .NE. 0) THEN
-        !************************************************************************
-        !     Drought stress factor - SWFAC1
-        !-----------------------------------------------------------------------
-        IF (SWC .LT. WP) THEN
-            SWFAC1 = 0.0
-        ELSEIF (SWC .GT. THE) THEN
-            SWFAC1 = 1.0
-        ELSE
-            SWFAC1 = (SWC - WP) / (THE - WP)
-            SWFAC1 = MAX(MIN(SWFAC1, 1.0), 0.0)
-        ENDIF
-
-        !-----------------------------------------------------------------------
-        !     Excess water stress factor - SWFAC2
-        !-----------------------------------------------------------------------
-        IF (SWC .LE. FC) THEN
-            WTABLE = 0.0
-            DWT = DP * 10.              !DP in cm, DWT in mm
+        IF (DWT .GE. STRESS_DEPTH) THEN
             SWFAC2 = 1.0
         ELSE
-            !FC water is distributed evenly throughout soil profile.  Any
-            !  water in excess of FC creates a free water surface
-            !WTABLE - thickness of water table (mm)
-            !DWT - depth to water table from surface (mm)
-            WTABLE = (SWC - FC) / (ST - FC) * DP * 10.
-            DWT = DP * 10. - WTABLE
-
-            IF (DWT .GE. STRESS_DEPTH) THEN
-                SWFAC2 = 1.0
-            ELSE
-                SWFAC2 = DWT / STRESS_DEPTH
-            ENDIF
-            SWFAC2 = MAX(MIN(SWFAC2, 1.0), 0.0)
+            SWFAC2 = DWT / STRESS_DEPTH
         ENDIF
-
-        !************************************************************************
-        !************************************************************************
-        !     End of dynamic 'IF' construct
-        !************************************************************************
+        SWFAC2 = MAX(MIN(SWFAC2, 1.0), 0.0)
     ENDIF
-    !************************************************************************
-    RETURN
-END SUBROUTINE STRESS
-!************************************************************************
-
-
+end subroutine stress_integ
 
 !************************************************************************
 ! *     Subroutine WBAL
@@ -470,7 +328,6 @@ SUBROUTINE WBAL(SWC_INIT, SWC, TDRN, TEPA, &
 
     !-----------------------------------------------------------------------
     IMPLICIT NONE
-    SAVE
     INTEGER, PARAMETER :: LSWC = 21
     REAL SWC, SWC_INIT
     REAL TDRN, TEPA, TESA, TIRR, TRAIN, TROF
