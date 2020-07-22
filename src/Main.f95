@@ -146,10 +146,6 @@ PROGRAM MAIN
             PAR, SWFAC1, SWFAC2, & !Input
             LAI, & !Output
             'CLOSE     ')
-
-    write(*, *) 'End of Program - hit enter key to end'
-    read(*, *)
-
     !-----------------------------------------------------------------------
     STOP
 END PROGRAM MAIN
