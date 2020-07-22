@@ -33,6 +33,8 @@
 PROGRAM MAIN
 
     !-----------------------------------------------------------------------
+    use SoilCLI, only: sw
+    use PlantCLI, only: plant
     IMPLICIT NONE
 
     REAL :: LAI, SWFAC1, SWFAC2
