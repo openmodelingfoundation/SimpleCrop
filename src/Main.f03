@@ -35,6 +35,7 @@ PROGRAM MAIN
     !-----------------------------------------------------------------------
     use SoilCLI, only: sw
     use PlantCLI, only: plant
+    use WeatherCLI, only: weathr
     IMPLICIT NONE
 
     REAL :: LAI, SWFAC1, SWFAC2
