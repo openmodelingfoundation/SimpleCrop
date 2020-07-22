@@ -1,3 +1,204 @@
+module PlantComponent
+    use, intrinsic :: iso_c_binding
+
+    type, public, bind(C) :: PlantInput
+        integer(c_int) :: doy, endsim
+        real(c_float) :: tmax, tmin, par, swfac1, swfac2
+    end type PlantInput
+
+    type, public, bind(C) :: PlantModel
+        real(c_float) :: e, fc, lai, nb, n, pt, pg, di, par
+        real(c_float) :: rm, dwf, intc, tmax, tmin, p1, sla
+        real(c_float) :: pd, emp1, emp2, lfmax, dwc, tmn
+        real(c_float) :: dwr, dw, dn, w, wc, wr, wf, tb, intot, dlai, fl
+        real(c_float) :: swfac1, swfac2
+        integer(c_int) :: doy, endsim, count
+    end type PlantModel
+contains
+    subroutine initialize_from_file(this)
+        use iso_c_binding
+        implicit none
+        type(PlantModel) :: this
+        this%endsim = 0
+
+        open (2, file = 'data/plant.inp', status = 'UNKNOWN')
+        open (1, file = 'output/plant.out', status = 'REPLACE')
+
+        read(2, 10) this%lfmax, this%emp2, this%emp1, this%pd, this%nb, this%rm, this%fc, this%tb &
+                , this%intot, this%n, this%lai, this%w, this%wr, this%wc &
+                , this%p1, this%sla
+        10 format(17(1x, f7.4))
+        close(2)
+
+        write(1, 11)
+        write(1, 12)
+        11 format('results of plant growth simulation: ')
+        12 format(/ &
+                /, '                accum', &
+                /, '       number    temp                                    leaf', &
+                /, '  day      of  during   plant  canopy    root   fruit    area', &
+                /, '   of    leaf  reprod  weight  weight  weight  weight   index', &
+                /, ' year   nodes    (oc)  (g/m2)  (g/m2)  (g/m2)  (g/m2) (m2/m2)', &
+                /, ' ----  ------  ------  ------  ------  ------  ------  ------')
+
+        write(*, 11)
+        write(*, 12)
+
+        this%count = 0
+    end subroutine initialize_from_file
+
+    subroutine c_inititialize_from_file(this) bind(c, name='pm_initialize_from_file')
+        use iso_c_binding
+        implicit none
+        type(PlantModel) :: this
+        call initialize_from_file(this)
+    end subroutine c_inititialize_from_file
+
+    subroutine output_to_file(this)
+        use iso_c_binding
+        implicit none
+        type(PlantModel) :: this
+
+        write(1, 20) this%doy, this%n, this%intc, this%w, this%wc, this%wr, this%wf, this%lai
+        20 format(i5, 7f8.2)
+
+        if (this%count == 23) then
+            this%count = 0
+            write(*, 30)
+            30 format(2/)
+            31 format(/ &
+                /, '                accum', &
+                /, '       number    temp                                    leaf', &
+                /, '  day      of  during   plant  canopy    root   fruit    area', &
+                /, '   of    leaf  reprod  weight  weight  weight  weight   index', &
+                /, ' year   nodes    (oc)  (g/m2)  (g/m2)  (g/m2)  (g/m2) (m2/m2)', &
+                /, ' ----  ------  ------  ------  ------  ------  ------  ------')
+            write(*, 31)
+        endif
+
+        this%count = this%count + 1
+        write(*, 20) this%doy, this%n, this%intc, this%w, this%wc, this%wr, this%wf, this%lai
+    end subroutine output_to_file
+
+    subroutine c_output_to_file(this) bind(c, name='pm_output_to_file')
+        use iso_c_binding
+        implicit none
+        type(PlantModel) :: this
+        call output_to_file(this)
+    end subroutine c_output_to_file
+
+    subroutine close_file(this)
+        implicit none
+        type(PlantModel) :: this
+        close(1)
+    end subroutine close_file
+
+    subroutine c_close(this) bind(c, name='pm_close')
+        implicit none
+        type(PlantModel) :: this
+        call close_file(this)
+    end subroutine c_close
+
+    subroutine rate(this)
+        use iso_c_binding
+        implicit none
+        type(PlantModel) :: this
+
+        this%tmn = 0.5 * (this%tmax + this%tmin)
+        call pts(this%tmax, this%tmin, this%pt)
+        call pgs(this%swfac1, this%swfac2, this%par, this%pd, this%pt, this%lai, this%pg)
+
+        if (this%n < this%lfmax) then
+            !         vegetative phase
+            this%fl = 1.0
+            this%e = 1.0
+            this%dn = this%rm * this%pt
+
+            call lais(this%fl, this%di, this%pd, this%emp1, this%emp2, this%n, this%nb, this%swfac1, this%swfac2, this%pt, &
+                    this%dn, this%p1, this%sla, this%dlai)
+            this%dw = this%e * (this%pg) * this%pd
+            this%dwc = this%fc * this%dw
+            this%dwr = (1 - this%fc) * this%dw
+            this%dwf = 0.0
+
+        else
+            !         reproductive phase
+            this%fl = 2.0
+
+            if (this%tmn >= this%tb .and. this%tmn <= 25) then
+                this%di = (this%tmn - this%tb)
+            else
+                this%di = 0.0
+            endif
+
+            this%intc = this%intc + this%di
+            this%e = 1.0
+            call lais(this%fl, this%di, this%pd, this%emp1, this%emp2, this%n, this%nb, this%swfac1, this%swfac2, this%pt, &
+                    this%dn, this%p1, this%sla, this%dlai)
+            this%dw = this%e * (this%pg) * this%pd
+            this%dwf = this%dw
+            this%dwc = 0.0
+            this%dwr = 0.0
+            this%dn = 0.0
+        endif
+    end subroutine rate
+
+    subroutine c_rate(this) bind(c, name='pm_rate')
+        implicit none
+        type(PlantModel) :: this
+        call rate(this)
+    end
+
+    subroutine update(this, input)
+        use iso_c_binding
+        implicit none
+        type(PlantModel) :: this
+        type(PlantInput) :: input
+        this%tmax = input%tmax
+        this%tmin = input%tmin
+        this%par  = input%par
+        this%swfac1 = input%swfac1
+        this%swfac2 = input%swfac2
+    end subroutine update
+
+    subroutine c_update(this, input) bind(c, name='pm_update')
+        implicit none
+        type(PlantModel) :: this
+        type(PlantInput) :: input
+        call update(this, input)
+    end subroutine c_update
+
+    subroutine integ(this)
+        use iso_c_binding
+        implicit none
+        type(PlantModel) :: this
+
+        this%lai = this%lai + this%dlai
+        this%w = this%w + this%dw
+        this%wc = this%wc + this%dwc
+        this%wr = this%wr + this%dwr
+        this%wf = this%wf + this%dwf
+
+        this%lai = max(this%lai, 0.0)
+        this%w = max(this%w, 0.0)
+        this%wc = max(this%wc, 0.0)
+        this%wr = max(this%wr, 0.0)
+        this%wf = max(this%wf, 0.0)
+
+        this%n = this%n + this%dn
+        if (this%intc > this%intot) then
+            this%endsim = 1
+            return
+        endif
+    end subroutine integ
+
+    subroutine c_integ(this) bind(c, name='pm_integ')
+        implicit none
+        type(PlantModel) :: this
+        call integ(this)
+    end subroutine c_integ
+end module PlantComponent
+
 !***********************************************************************
 !***********************************************************************
 !     Subroutine PLANT
@@ -52,245 +253,169 @@
 
 
 !***********************************************************************
-
-SUBROUTINE PLANT(&
-        DOY, endsim, TMAX, TMIN, PAR, SWFAC1, SWFAC2, & !Input
-        LAI, & !Output
-        DYN)                                            !Control
+subroutine plant(&
+        doy, endsim, tmax, tmin, par, swfac1, swfac2, & !input
+        lai, & !output
+        dyn)                                           !control
 
     !-----------------------------------------------------------------------
-    IMPLICIT NONE
-    SAVE
+    use PlantComponent, only: initialize_from_file, rate, integ, output_to_file, close_file, PlantModel, PlantInput
+    use iso_c_binding
+    implicit none
+    save
 
-    REAL :: E, Fc, Lai, nb, N, PT, Pg, di, PAR
-    REAL :: rm, dwf, int, TMAX, TMIN, p1, sla
-    REAL :: PD, EMP1, EMP2, Lfmax, dwc, TMN
-    REAL :: dwr, dw, dn, w, wc, wr, wf, tb, intot, dLAI, FL
-    INTEGER :: DOY, endsim, COUNT
-    CHARACTER(10) :: DYN
+    integer(c_int) :: doy, endsim
+    real(c_float) :: tmax, tmin, par, swfac1, swfac2, lai
+    character(len=10) dyn
+    type(PlantModel) :: model
 
-    REAL :: SWFAC1, SWFAC2
+    model%doy = doy
+    model%endsim = endsim
+    model%tmax = tmax
+    model%tmin = tmin
+    model%par = par
+    model%swfac1 = swfac1
+    model%swfac2 = swfac2
+    model%lai = lai
 
     !************************************************************************
     !************************************************************************
-    !     INITIALIZATION
+    !     initialization
     !************************************************************************
-    IF (INDEX(DYN, 'INITIAL') /= 0) THEN
+    if (index(dyn, 'INITIAL') /= 0) then
         !************************************************************************
-        endsim = 0
-
-        OPEN (2, FILE = 'data/plant.inp', STATUS = 'UNKNOWN')
-        OPEN (1, FILE = 'output/plant.out', STATUS = 'REPLACE')
-
-        READ(2, 10) Lfmax, EMP2, EMP1, PD, nb, rm, fc, tb, intot, n, lai, w, wr, wc &
-                , p1, sla
-        10 FORMAT(17(1X, F7.4))
-        CLOSE(2)
-
-        WRITE(1, 11)
-        WRITE(1, 12)
-        11 FORMAT('Results of plant growth simulation: ')
-        12 FORMAT(/ &
-                /, '                Accum', &
-                /, '       Number    Temp                                    Leaf', &
-                /, '  Day      of  during   Plant  Canopy    Root   Fruit    Area', &
-                /, '   of    Leaf  Reprod  Weight  Weight  Weight  weight   Index', &
-                /, ' Year   Nodes    (oC)  (g/m2)  (g/m2)  (g/m2)  (g/m2) (m2/m2)', &
-                /, ' ----  ------  ------  ------  ------  ------  ------  ------')
-
-        WRITE(*, 11)
-        WRITE(*, 12)
-
-        COUNT = 0
+        call initialize_from_file(model)
 
         !************************************************************************
         !************************************************************************
-        !     RATE CALCULATIONS
+        !     rate calculations
         !************************************************************************
-    ELSEIF (INDEX(DYN, 'RATE') /= 0) THEN
+    elseif (index(dyn, 'RATE') /= 0) then
         !************************************************************************
-        TMN = 0.5 * (TMAX + TMIN)
-        CALL PTS(TMAX, TMIN, PT)
-        CALL PGS(SWFAC1, SWFAC2, PAR, PD, PT, Lai, Pg)
-
-        IF (N < Lfmax) THEN
-            !         Vegetative phase
-            FL = 1.0
-            E = 1.0
-            dN = rm * PT
-
-            CALL LAIS(FL, di, PD, EMP1, EMP2, N, nb, SWFAC1, SWFAC2, PT, &
-                    dN, p1, sla, dLAI)
-            dw = E * (Pg) * PD
-            dwc = Fc * dw
-            dwr = (1 - Fc) * dw
-            dwf = 0.0
-
-        ELSE
-            !         Reproductive phase
-            FL = 2.0
-
-            IF (TMN >= tb .AND. TMN <= 25) THEN
-                di = (TMN - tb)
-            ELSE
-                di = 0.0
-            ENDIF
-
-            int = int + di
-            E = 1.0
-            CALL LAIS(FL, di, PD, EMP1, EMP2, N, nb, SWFAC1, SWFAC2, PT, &
-                    dN, p1, sla, dLAI)
-            dw = E * (Pg) * PD
-            dwf = dw
-            dwc = 0.0
-            dwr = 0.0
-            dn = 0.0
-        ENDIF
+        call rate(model)
 
         !************************************************************************
         !************************************************************************
-        !     INTEGRATION
+        !     integration
         !************************************************************************
-    ELSEIF (INDEX(DYN, 'INTEG') /= 0) THEN
+    elseif (index(dyn, 'INTEG') /= 0) then
         !************************************************************************
-        LAI = LAI + dLAI
-        w = w + dw
-        wc = wc + dwc
-        wr = wr + dwr
-        wf = wf + dwf
-
-        LAI = MAX(LAI, 0.0)
-        W = MAX(W, 0.0)
-        WC = MAX(WC, 0.0)
-        WR = MAX(WR, 0.0)
-        WF = MAX(WF, 0.0)
-
-        N = N + dN
-        IF (int > INTOT) THEN
-            endsim = 1
-            WRITE(1, 14) doy
-            14 FORMAT(/, '  The crop matured on day ', I3, '.')
-            RETURN
-        ENDIF
+        call integ(model)
 
         !************************************************************************
         !************************************************************************
-        !     OUTPUT
+        !     output
         !************************************************************************
-    ELSEIF (INDEX(DYN, 'OUTPUT') /= 0) THEN
+    elseif (index(dyn, 'OUTPUT') /= 0) then
         !************************************************************************
-        WRITE(1, 20) DOY, n, int, w, wc, wr, wf, lai
-        20 FORMAT(I5, 7F8.2)
-
-        IF (COUNT == 23) THEN
-            COUNT = 0
-            WRITE(*, 30)
-            30 FORMAT(2/)
-            WRITE(*, 12)
-        ENDIF
-
-        COUNT = COUNT + 1
-        WRITE(*, 20) DOY, n, int, w, wc, wr, wf, lai
+        call output_to_file(model)
 
         !************************************************************************
         !************************************************************************
-        !     CLOSE
+        !     close
         !************************************************************************
-    ELSEIF (INDEX(DYN, 'CLOSE') /= 0) THEN
+    elseif (index(dyn, 'CLOSE') /= 0) then
         !************************************************************************
-        CLOSE(1)
+        call close_file(model)
 
         !************************************************************************
         !************************************************************************
-        !     End of dynamic 'IF' construct
+        !     end of dynamic 'if' construct
         !************************************************************************
-    ENDIF
+    endif
     !************************************************************************
-    RETURN
-END SUBROUTINE PLANT
+    doy = model%doy
+    endsim = model%endsim
+    tmax = model%tmax
+    tmin = model%tmin
+    par = model%par
+    swfac1 = model%swfac1
+    swfac2 = model%swfac2
+    lai = model%lai
+end subroutine plant
 !***********************************************************************
 
 
 
 !***********************************************************************
-!     Subroutine LAIS
-!     Calculates the canopy leaf area index (LAI)
+!     subroutine lais
+!     calculates the canopy leaf area index (lai)
 !-----------------------------------------------------------------------
-!     Input:  FL, di, PD, EMP1, EMP2, N, nb, SWFAC1, SWFAC2, PT, dN
-!     Output: dLAI
+!     input:  fl, di, pd, emp1, emp2, n, nb, swfac1, swfac2, pt, dn
+!     output: dlai
 !************************************************************************
-SUBROUTINE LAIS(FL, di, PD, EMP1, EMP2, N, nb, SWFAC1, SWFAC2, PT, &
-        dN, p1, sla, dLAI)
+! pure
+subroutine lais(fl, di, pd, emp1, emp2, n, nb, swfac1, swfac2, pt, &
+        dn, p1, sla, dlai)
 
     !-----------------------------------------------------------------------
-    IMPLICIT NONE
-    SAVE
-    REAL :: PD, EMP1, EMP2, N, nb, dLAI, SWFAC, a, dN, p1, sla
-    REAL :: SWFAC1, SWFAC2, PT, di, FL
+    implicit none
+    save
+    real :: pd, emp1, emp2, n, nb, dlai, swfac, a, dn, p1, sla
+    real :: swfac1, swfac2, pt, di, fl
     !-----------------------------------------------------------------------
 
-    SWFAC = MIN(SWFAC1, SWFAC2)
-    IF (FL == 1.0) THEN
-        a = exp(EMP2 * (N - nb))
-        dLAI = SWFAC * PD * EMP1 * PT * (a / (1 + a)) * dN
-    ELSEIF (FL == 2.0) THEN
+    swfac = min(swfac1, swfac2)
+    if (fl == 1.0) then
+        a = exp(emp2 * (n - nb))
+        dlai = swfac * pd * emp1 * pt * (a / (1 + a)) * dn
+    elseif (fl == 2.0) then
 
-        dLAI = - PD * di * p1 * sla
+        dlai = - pd * di * p1 * sla
 
-    ENDIF
+    endif
     !-----------------------------------------------------------------------
-    RETURN
-END SUBROUTINE LAIS
+    return
+end subroutine lais
 !***********************************************************************
 
 
 
 !****************************************************************************
-!     Subroutine PGS
-!     Calculates the canopy gross photosysntesis rate (PG)
+!     subroutine pgs
+!     calculates the canopy gross photosysntesis rate (pg)
 !*****************************************************************************
-SUBROUTINE PGS(SWFAC1, SWFAC2, PAR, PD, PT, Lai, Pg)
+! pure
+subroutine pgs(swfac1, swfac2, par, pd, pt, lai, pg)
 
     !-----------------------------------------------------------------------
-    IMPLICIT NONE
-    SAVE
-    REAL :: PAR, Lai, Pg, PT, Y1
-    REAL :: SWFAC1, SWFAC2, SWFAC, ROWSPC, PD
+    implicit none
+    save
+    real :: par, lai, pg, pt, y1
+    real :: swfac1, swfac2, swfac, rowspc, pd
 
     !-----------------------------------------------------------------------
-    !     ROWSP = row spacing
-    !     Y1 = canopy light extinction coefficient
+    !     rowsp = row spacing
+    !     y1 = canopy light extinction coefficient
 
-    SWFAC = MIN(SWFAC1, SWFAC2)
-    ROWSPC = 60.0
-    Y1 = 1.5 - 0.768 * ((ROWSPC * 0.01)**2 * PD)**0.1
-    Pg = PT * SWFAC * 2.1 * PAR / PD * (1.0 - EXP(-Y1 * LAI))
+    swfac = min(swfac1, swfac2)
+    rowspc = 60.0
+    y1 = 1.5 - 0.768 * ((rowspc * 0.01)**2 * pd)**0.1
+    pg = pt * swfac * 2.1 * par / pd * (1.0 - exp(-y1 * lai))
 
     !-----------------------------------------------------------------------
-    RETURN
-END SUBROUTINE PGS
+    return
+end subroutine pgs
 !***********************************************************************
 
 
 
 !***********************************************************************
-!     Subroutine PTS
-!     Calculates the factor that incorporates the effect of temperature
+!     subroutine pts
+!     calculates the factor that incorporates the effect of temperature
 !     on photosynthesis
 !************************************************************************
-SUBROUTINE PTS(TMAX, TMIN, PT)
+subroutine pts(tmax, tmin, pt)
     !-----------------------------------------------------------------------
-    IMPLICIT NONE
-    SAVE
-    REAL :: PT, TMAX, TMIN
+    implicit none
+    save
+    real :: pt, tmax, tmin
 
     !-----------------------------------------------------------------------
-    PT = 1.0 - 0.0025 * ((0.25 * TMIN + 0.75 * TMAX) - 26.0)**2
+    pt = 1.0 - 0.0025 * ((0.25 * tmin + 0.75 * tmax) - 26.0)**2
 
     !-----------------------------------------------------------------------
-    RETURN
-END SUBROUTINE PTS
+    return
+end subroutine pts
 !***********************************************************************
 !***********************************************************************
-
-
