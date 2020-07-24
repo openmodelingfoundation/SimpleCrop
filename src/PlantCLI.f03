@@ -20,7 +20,7 @@ contains
 
         write(1, 11)
         write(1, 12)
-        11 format('results of plant growth simulation: ')
+        11 format('Results of plant growth simulation: ')
         12 format(/ &
                 /, '                Accum', &
                 /, '       Number    Temp                                    Leaf', &
