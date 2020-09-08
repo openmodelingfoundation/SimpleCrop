@@ -58,7 +58,6 @@ contains
 
         !-----------------------------------------------------------------------
         implicit none
-        save
         real :: par, lai, pg, pt, y1
         real :: swfac1, swfac2, swfac, rowspc, pd
 
@@ -86,7 +85,6 @@ contains
     subroutine pts(tmax, tmin, pt)
         !-----------------------------------------------------------------------
         implicit none
-        save
         real :: pt, tmax, tmin
 
         !-----------------------------------------------------------------------
